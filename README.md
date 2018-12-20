@@ -34,7 +34,7 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
   
   Of course, if you are looking at a different set of samples and do not have any expression information (or if you would prefer not to limit somatic mutations by expression), simply set the `--no_expression` tag when running PertInInt.
 
-* **Known Driver Genes.** Once PertInInt is finished running, we include an option to annotate the resulting gene list with whether each gene is a known cancer driver gene. You can turn this option off with the `--no_driver_id` tag when running. To download the lists of known driver genes that we use for validation in our paper, run the following:
+* **Known Driver Genes.** Once PertInInt is finished running, we include an option to annotate the resulting gene list with whether each gene is a known cancer driver gene. You can turn this option off with the `--no_driver_id` tag when running. To download the list of known driver genes that we use for validation in our paper, run the following:
 
   ```bash
   DRIVER_FILE="GRCh38_known_drivers.tsv.gz"

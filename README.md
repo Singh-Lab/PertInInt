@@ -25,14 +25,24 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
   gzip -d mafs/${AGGREGATE_CANCER}
   ```
 
+* We find that PertInInt's performance improves when limiting to those somatic mutations that fall into proteins that are expressed at TPM (transcripts per million) > 0.1. To download the list of genes and corresponding TCGA sample identifiers (across all 33 cancer types) with that gene expressed at TPM > 0.1, run the following: 
+
+  ```bash
+  EXPR_FILE="TCGA_GRCh38_expressed-genes_TPM.tsv.gz"
+  wget http://compbio.cs.princeton.edu/pertinint/${EXPR_FILE}
+  ```
+  
+  Of course, if you are looking at a different set of samples and do not have any expression information (or if you would prefer not to limit somatic mutations by expression), simply set the `--no_expression` tag when running PertInInt.
+
 ### 2: Run PertInInt
 
 * PertInInt parses the input .maf file and stores mutation information in memory; you should allot enough RAM to the program to store this file. There are no further machine nor processor requirements. To run PertInInt: 
 
   ```bash
   python PertInInt.py --track_path track_weights/
-                      --input_maf mafs/TCGA.Aggregate.muse.aggregated.somatic.maf
-                      --output output/TCGA.Aggregate.muse.aggregated.somatic-PertInInt_output.tsv
+                      --maf_file mafs/TCGA.Aggregate.muse.aggregated.somatic.maf
+                      --expr_file TCGA_GRCh38_expressed-genes_TPM.tsv.gz
+                      --out_file output/TCGA.Aggregate.muse.aggregated.somatic-PertInInt_output.tsv
   ```
 
 ### 3: Parsing PertInInt output

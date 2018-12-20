@@ -8,7 +8,7 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
 
 ### 1: Downloading preliminary data
 
-* PertInInt uses *tracks* to model different functional regions of a protein. These tracks measure interaction interfaces, functional protein domains and conserved protein positions. To download the set of precomputed tracks used by PertInt (which will be unzipped into a folder called `track_weights`), run the following: 
+* PertInInt uses *tracks* to model different functional regions of a protein. These tracks measure interaction interfaces, functional protein domains and conserved protein positions. To download the set of precomputed tracks used by PertInInt (which will be unzipped into a directory called `track_weights/`), run the following: 
 
   ```bash
   PERTININT_TRACKS="PertInInt-tracks_v0.tar.gz"

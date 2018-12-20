@@ -44,6 +44,6 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
                                    --output output/TCGA.Aggregate.muse.aggregated.somatic-PertInInt_output.png
   ```
 
-### 4: Customizing PertInInt tracks
+### 4: Source code for customizing PertInInt tracks
 
 Our analytical method can easily be extended to include other track types. The full source code as well as instructions for preprocessing tracks and precomputing the expectation, variance, and covariances needed to compute *Z*-scores can be found on the [PertInInt "internal" wiki](https://github.com/Singh-Lab/PertInInt-internal/wiki). 

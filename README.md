@@ -39,3 +39,11 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
 
 * By default, PertInInt returns a list of genes ordered in descending order by *Z*-score. Each gene is associated with a comma-delimited list of functional regions and their associated individual (positive) *Z*-scores. We provide a script for your convenience to parse this output and create a mechanism plot highlighting which track types "light up" for particular genes to aid in functional analyses. 
 
+  ```bash
+  python create_mechanism_plots.py --results_file output/TCGA.Aggregate.muse.aggregated.somatic-PertInInt_output.tsv
+                                   --output output/TCGA.Aggregate.muse.aggregated.somatic-PertInInt_output.png
+  ```
+
+### 4: Customizing PertInInt tracks
+
+Our analytical method can easily be extended to include other track types. The full source code as well as instructions for preprocessing tracks and precomputing the expectation, variance, and covariances needed to compute *Z*-scores can be found on the [PertInInt "internal" wiki](https://github.com/Singh-Lab/PertInInt-internal/wiki). 

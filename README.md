@@ -27,7 +27,7 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
 
 ### 2: Run PertInInt
 
-* PertInInt parses the input .maf file and stores it in memory; you should allot as much memory as is required here to run PertInInt. This program can be run on any machine and does not have specific processor requirements. To run PertInInt: 
+* PertInInt parses the input .maf file and stores mutation information in memory; you should allot enough RAM to the program to store this file. There are no further machine nor processor requirements. To run PertInInt: 
 
   ```bash
   python PertInInt.py --track_path track_weights/

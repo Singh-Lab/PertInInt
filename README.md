@@ -8,7 +8,7 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
 
 ### 1: Downloading (required) preliminary data
 
-* **Precomputed Tracks.** PertInInt uses *tracks* to model different functional regions of a protein. These tracks measure interaction interfaces, functional protein domains and conserved protein positions. To download the set of precomputed tracks used by PertInInt (which will be unzipped into a directory called `track_weights/`), run the following: 
+* **Precomputed Tracks.** PertInInt uses models different functional regions of a protein as "tracks". These tracks can represent interaction interfaces, functional protein domains and conserved protein positions. To download the set of precomputed tracks used by PertInInt (which will be unzipped into a directory called `track_weights/`), run the following: 
 
   ```bash
   PERTININT_TRACKS="PertInInt-tracks_v0.tar.gz"
@@ -37,13 +37,11 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
 
 ### 3: Run PertInInt
 
-* PertInInt parses the input .maf file and stores mutation information in memory; you should allot enough RAM to the program to store this file. There are no further machine nor processor requirements. 
+* By default, PertInInt returns a ranked list of Ensembl gene identifiers in descending order by *Z*-score. We automatically annotate these genes with their "driver status" corresponding to their presence in any lists of known cancer driver genes, as well as with their "gene name" corresponding to their primary HGNC gene symbol. The required mapping files for these two annotation steps are provided in this repository: 
 
-* PertInInt returns a ranked list of Ensembl gene identifiers in descending order by *Z*-score. We automatically annotate this output with whether those genes are found in any lists of known cancer driver genes, and we also provide the primary HGNC gene symbols corresponding to these genes. The required mapping files for these annotations are provided in this repository: 
+  + **Known Driver Genes** are listed in `GRCh38_driver_gene_list.tsv.gz`. You can customize this file (following the same tab-delimited formatting) however you like. To turn off this annotation option, run with the `--no_driver_id` flag.
 
-  + **Known Driver Genes** are listed in `GRCh38_driver_gene_list.tsv.gz`. You can customize this file (following the same tab-delimited formatting) however you like. To turn off this annotation option, run with the `--no_driver_id` argument.
-
-  + **Ensembl ID &rarr; Gene Name Mapping** is found in `GRCh38_ensembl_gene_list.tsv.gz`. Again, this file can be customized to annotate each Ensembl gene identifier with any other useful gene names or identifiers. To turn off this annotation option, run with the `--no_gene_names` argument. 
+  + **Ensembl ID &rarr; Gene Name Mapping** is found in `GRCh38_ensembl_gene_list.tsv.gz`. Again, this file can be customized to annotate each Ensembl gene identifier with any other useful gene names or identifiers. To turn off this annotation option, run with the `--no_gene_name` flag. 
 
 * To run PertInInt: 
 
@@ -56,9 +54,29 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
                       --ensembl_annotation_file GRCh38_ensembl_gene_list.tsv.gz
   ```
 
+* Finally, PertInInt automatically includes all four track types presented in the original publication of our paper. You can choose to run PertInInt on a subset of track types by specifying one of the following options using the `--restriction` argument:
+
+  | argument | track types included |
+  | -------- | -------------------- | 
+  | none *(default)* | interaction, domain, conservation, whole gene | 
+  | interaction | interaction
+  | nointeraction | domain, conservation, whole gene | 
+  | domain | domain | 
+  | nodomain | interaction, conservation, whole gene | 
+  | conservation | conservation | 
+  | noconservation | interaction, domain, whole gene | 
+  | wholegene | whole gene | 
+  | nowholegene | interaction, domain, conservation | 
+  | intercons | interaction, conservation |  
+  | interdom | interaction, domain | 
+  | interwholegene | interaction, whole gene | 
+  | domcons | domain, conservation | 
+  | domwholegene | domain, whole gene | 
+  | conswholegene | conservation, whole gene | 
+
 ### 4: Parsing PertInInt output
 
-* By default, PertInInt returns a list of genes ordered in descending order by *Z*-score. Each gene is associated with a comma-delimited list of functional regions and their associated individual (positive) *Z*-scores. We provide a script for your convenience to parse this output and create a tab-delimited table highlighting which track types (e.g., specific interaction sites or domains) "light up" for particular genes to aid in downstream functional analyses. 
+* Each gene ranked by PertInInt is also associated with a comma-delimited list of individual functional regions with (positive) *Z*-scores. To aid in downstream functional analyses, we provide a script for your convenience to parse this output to create a tab-delimited table highlighting which track types (e.g., specific interaction sites or domains) "light up" for particular genes:
 
   ```bash
   python highlight_mechanism.py --pertinint_results output/TCGA.Aggregate.muse.aggregated.somatic-PertInInt_output.tsv

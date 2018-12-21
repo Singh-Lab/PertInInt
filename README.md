@@ -18,26 +18,6 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
   
 ### 2: Downloading (optional) preliminary data  
 
-* **Expression Data.** We find that PertInInt's performance improves when limiting to those somatic mutations that fall into proteins that are expressed at TPM (transcripts per million) > 0.1. To download the list of genes and corresponding TCGA sample identifiers (across all 33 cancer types) with that gene expressed at TPM > 0.1, run the following: 
-
-  ```bash
-  wget http://compbio.cs.princeton.edu/pertinint/TCGA_GRCh38_expressed-genes_TPM.tsv.gz
-  ```
-  
-  Of course, if you are looking at a different set of samples and do not have any expression information (or if you would prefer not to limit somatic mutations by expression), simply set the `--no_expression` tag when running PertInInt.
-
-* **Known Driver Genes.** Once PertInInt is finished running, we include an option to annotate the resulting gene list with whether each gene is a known cancer driver gene. You can customize the required input file to annotate your resulting gene list however you want. Turn this option off with the `--no_driver_id` tag when running. To download the list of known driver genes to annotate your output with, run the following:
-
-  ```bash
-  wget http://compbio.cs.princeton.edu/pertinint/GRCh38_driver_gene_list.tsv.gz
-  ```
-
-* **Ensembl &rarr; Gene Name Mapping.** By default, PertInInt returns a ranked list of genes specified by their Ensembl gene identifier. These lists can be hard to read intuitively. As such, we provide a mapping from Ensembl gene identifiers to HGNC gene symbols, which the output will be annotated with accordingly. Turn this option off with the `--no_gene_names` tag when running. To download the list of Ensembl to gene names to annotate your output with, run the following:  
-
-  ```bash
-  wget http://compbio.cs.princeton.edu/pertinint/GRCh38_ensembl_gene_list.tsv.gz
-  ```
-
 * **Somatic Mutations.** PertInInt runs on any input .maf file. We tested PertInInt using a .maf file containing somatic mutations from all 33 TCGA cancer types, obtained from [NCI's Genomic Data Commons](https://gdc.cancer.gov) on December 6, 2018. To download this aggregated .maf file to test on, run the following: 
 
   ```bash
@@ -47,9 +27,25 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
   gzip -d mafs/${AGGREGATE_CANCER}
   ```
 
+* **Expression Data.** We find that PertInInt's performance improves when limiting to those somatic mutations that fall into proteins that are expressed at TPM (transcripts per million) > 0.1. To download the list of genes and corresponding TCGA sample identifiers (across all 33 cancer types) with that gene expressed at TPM > 0.1, run the following: 
+
+  ```bash
+  wget http://compbio.cs.princeton.edu/pertinint/TCGA_GRCh38_expressed-genes_TPM.tsv.gz
+  ```
+  
+  Of course, if you are looking at a different set of samples and do not have any expression information (or if you would prefer not to limit somatic mutations by expression), simply set the `--no_expression` tag when running PertInInt.
+
 ### 3: Run PertInInt
 
-* PertInInt parses the input .maf file and stores mutation information in memory; you should allot enough RAM to the program to store this file. There are no further machine nor processor requirements. To run PertInInt: 
+* PertInInt parses the input .maf file and stores mutation information in memory; you should allot enough RAM to the program to store this file. There are no further machine nor processor requirements. 
+
+* PertInInt returns a ranked list of Ensembl gene identifiers in descending order by *Z*-score. We automatically annotate this output with whether those genes are found in any lists of known cancer driver genes, and we also provide the primary HGNC gene symbols corresponding to these genes. The required mapping files for these annotations are provided in this repository: 
+
+  + **Known Driver Genes** are listed in `GRCh38_driver_gene_list.tsv.gz`. You can customize this file (following the same tab-delimited formatting) however you like. To turn off this annotation option, run with the `--no_driver_id` argument.
+
+  + **Ensembl ID &rarr; Gene Name Mapping** is found in `GRCh38_ensembl_gene_list.tsv.gz`. Again, this file can be customized to annotate each Ensembl gene identifier with any other useful gene names or identifiers. To turn off this annotation option, run with the `--no_gene_names` argument. 
+
+* To run PertInInt: 
 
   ```bash
   python PertInInt.py --track_path track_weights/

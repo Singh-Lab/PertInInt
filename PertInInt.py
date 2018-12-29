@@ -721,42 +721,42 @@ def reformat_results(input_files, concatenated_output_file, annotation_file, ann
 
             # (4) include this gene if it hasn't yet been observed:
             if gene_id not in gene_to_score:
-                gene_to_score[gene_id] = [gene_zscore, total_seconds, track_names]
+                gene_to_score[gene_id] = {'score': gene_zscore,
+                                          'time': total_seconds,
+                                          'tracks': track_names}
 
             # (5) update the total seconds, score, and track names otherwise
             else:
                 # (5a) update the score (i.e., take the maximum)
-                if gene_zscore > gene_to_score[gene_id][0]:
-                    gene_to_score[gene_id][0] = gene_zscore
+                if gene_zscore > gene_to_score[gene_id]['score']:
+                    gene_to_score[gene_id]['score'] = gene_zscore
 
                 # (5b) tack onto the total time
-                gene_to_score[gene_id][1] += total_seconds
+                gene_to_score[gene_id]['time'] += total_seconds
 
                 # (5c) tack on the track names (and keep track of the maximum for corresponding tracks)
                 for bd_track, zscore in track_names.items():
-                    if bd_track not in gene_to_score[gene_id][2]:
-                        gene_to_score[gene_id][2][bd_track] = zscore
+                    if bd_track not in gene_to_score[gene_id]['tracks']:
+                        gene_to_score[gene_id]['tracks'][bd_track] = zscore
                     else:
-                        gene_to_score[gene_id][2][bd_track] = max(gene_to_score[gene_id][2][bd_track], zscore)
+                        gene_to_score[gene_id]['tracks'][bd_track] = max(gene_to_score[gene_id]['tracks'][bd_track],
+                                                                         zscore)
         infile_handle.close()
 
     # (6) get the total time to run ALL genes, and reformat the time (to display) for each individual gene
     total_runtime = 0  # total across all protein isoforms and genes
     for gene_id in gene_to_score.keys():
-        total_time = gene_to_score[gene_id][1]
-        total_runtime += total_time
-        gene_to_score[gene_id][1] = reformat_time(total_time)
+        total_runtime += gene_to_score[gene_id]['time']
+        gene_to_score[gene_id]['time'] = reformat_time(gene_to_score[gene_id]['time'])
 
     # (7) convert track names to full list:
     for gene_id in gene_to_score.keys():
-        trackname_to_zscore = gene_to_score[gene_id][2]
-        track_names_str = ';'.join([tn + '|' + str(zs) for tn, zs in trackname_to_zscore.items()])
-        gene_to_score[gene_id][2] = track_names_str
+        gene_to_score[gene_id]['tracks'] = ';'.join([str(tn) + '|' + str(zs) for tn, zs in
+                                                     gene_to_score[gene_id]['tracks'].items()])
 
     # (8) get the final list of sorted genes
-    final_sorted_genes = sorted([(gene_zscore, gene_id, gene_tracknames, gene_runtime)
-                                 for gene_id, (gene_zscore, gene_runtime, gene_tracknames) in gene_to_score.items()],
-                                reverse=True)
+    final_sorted_genes = sorted([(gene_vals['score'], gene_id, gene_vals['tracks'], gene_vals['time'])
+                                 for gene_id, gene_vals in gene_to_score.items()], reverse=True)
 
     # (9) map Ensembl gene ID -> primary gene name
     gene_to_name = {}

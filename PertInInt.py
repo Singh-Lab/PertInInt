@@ -943,7 +943,7 @@ if __name__ == "__main__":
                      '    > tracks directory: '+args.track_path+'\n')
     start = time.time()
     prot_to_trackfile, prot_to_geneid = track_weights_list(args.track_path)
-    sys.stderr.write('    > finished in '+reformat_time(time.time()-start)+'\n')
+    sys.stderr.write('    ! finished in '+reformat_time(time.time()-start)+'\n')
 
     # ------------------------------------------------------------------------------------------------
     # (2) read in mutations for those genes that can modeled
@@ -951,6 +951,7 @@ if __name__ == "__main__":
     #       we are only interested in missense mutations
     sys.stderr.write('(2) Reading in mutation data...\n' +
                      '    > input maf file: ' + args.maf_file + '\n' +
+                     '    > gene name mapping file: ' + args.ensembl_annotation_file + '\n' +
                      ('' if not args.limit_expression else
                       '    > expressed genes list: ' + args.expression_file + '\n'))
     start = time.time()
@@ -965,7 +966,7 @@ if __name__ == "__main__":
         args.ensembl_annotation_file if args.limit_expression else None,
         args.expression_file if args.limit_expression else None  # path to expression file
     )
-    sys.stderr.write('    > finished in '+reformat_time(time.time()-start)+'\n')
+    sys.stderr.write('    ! finished in '+reformat_time(time.time()-start)+'\n')
 
     # ------------------------------------------------------------------------------------------------
     # (3) start processing mutated proteins:
@@ -993,7 +994,7 @@ if __name__ == "__main__":
                                              protein_total_time,
                                              track_zscores])) + '\n')
     out_handle.close()
-    sys.stderr.write('    > finished in '+reformat_time(time.time()-start)+'\n')
+    sys.stderr.write('    ! finished in '+reformat_time(time.time()-start)+'\n')
 
     # ------------------------------------------------------------------------------------------------
     # (4) reformat per-protein results:
@@ -1004,4 +1005,4 @@ if __name__ == "__main__":
     start = time.time()
     reformat_results([args.out_file + '-tmp'], args.out_file, args.ensembl_annotation_file,
                      args.annotate_drivers, args.driver_annotation_file if args.annotate_drivers else None)
-    sys.stderr.write('    > finished in '+reformat_time(time.time()-start)+'\n')
+    sys.stderr.write('    ! finished in '+reformat_time(time.time()-start)+'\n')

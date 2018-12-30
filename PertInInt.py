@@ -373,13 +373,23 @@ def get_observed_mu_covariance(mutation_indices, weightfile, restriction='none')
         aggregate_names = aggregate_domain_tracks(weightfile)
 
     weightfile_handle = gzip.open(weightfile) if weightfile.endswith('gz') else open(weightfile)
+    header = None
     for wline in weightfile_handle:
         if wline.startswith('#'):
             continue
+        elif not header:
+            header = wline[:-1].split('\t')
+            continue
 
-        (track_id, track_name, intervals_yi, binding_weights,
-         expected_yi, variance_yi, covariances_yizi) = wline[:-1].split('\t')[1:8]
-        minimum_mut_count = max(int(wline[:-1].split('\t')[8]), 1) if len(wline[:-1].split('\t')) > 8 else 1
+        v = wline[:-1].split('\t')
+        track_id = v[header.index('track_id')]
+        track_name = v[header.index('track_name')]
+        intervals_yi = v[header.index('0-index-enrichment-intervals')]
+        binding_weights = v[header.index('0-index-positive-functional-scores')].split(',')
+        expected_yi = float(v[header.index('expectation_yi')])
+        variance_yi = float(v[header.index('variance_yi')])
+        covariances_yizi = v[header.index('covariance')]
+        minimum_mut_count = max(int(v[header.index('minimum_mutation_count')]), 1)
 
         # restrict to a subset of tracks based on the restriction passed in
         if not check_restrictions(track_name, restriction, aggregate_names):
@@ -395,8 +405,7 @@ def get_observed_mu_covariance(mutation_indices, weightfile, restriction='none')
             continue
 
         # observed binding score:
-        weight_vector = {int(locweight.split(':')[0]): float(locweight.split(':')[1])
-                         for locweight in binding_weights.split(',')}
+        weight_vector = {int(locweight.split(':')[0]): float(locweight.split(':')[1]) for locweight in binding_weights}
         observed_val = sum([mut_burden * weight_vector.get(mut_index, 0.) for mut_index, mut_burden in track_mutations])
 
         if not observed_val > 0:
@@ -404,7 +413,7 @@ def get_observed_mu_covariance(mutation_indices, weightfile, restriction='none')
 
         # expected binding score:
         total_mutations = sum([mut_burden for _, mut_burden in track_mutations])
-        expected_val = total_mutations * float(expected_yi)
+        expected_val = total_mutations * expected_yi
 
         # note that we restrict to positive Z-scores only (for combination later)
         if not observed_val > expected_val:
@@ -425,13 +434,13 @@ def get_observed_mu_covariance(mutation_indices, weightfile, restriction='none')
             covariances[track_id] = {}
         squared_mutations = sum(
             [mut_burden * mut_burden for _, mut_burden in track_mutations])  # muts are not all = "1"
-        covariances[track_id][track_id] = squared_mutations * float(variance_yi)
+        covariances[track_id][track_id] = squared_mutations * variance_yi
 
         # covariances between binding scores:
         if len(covariances_yizi) < 1:  # last track, no need to store its covariances to other tracks
             continue
 
-        for other_id, cov in map(lambda x: x.split(':')[:2], covariances_yizi.split(',')):
+        for other_id, cov in [x.split(':')[:2] for x in covariances_yizi.split(',')]:
             cov_score, likelihood_track, likelihood_other = map(float, cov.split('|')[:3])
 
             if other_id not in covariances:

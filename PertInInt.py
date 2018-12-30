@@ -939,6 +939,8 @@ if __name__ == "__main__":
 
     # ------------------------------------------------------------------------------------------------
     # (1) get paths to genes we can model
+    if not args.track_path.endswith('/'):
+        args.track_path += '/'
     sys.stderr.write('(1) Getting paths to proteins that can be modeled...\n' +
                      '    > tracks directory: '+args.track_path+'\n')
     start = time.time()

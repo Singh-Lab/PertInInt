@@ -880,8 +880,8 @@ if __name__ == "__main__":
                          '    > wget http://compbio.cs.princeton.edu/pertinint/$AGGREGATE_CANCER ' +
                          '-O mafs/$AGGREGATE_CANCER\n' +
                          '    > gzip -d mafs/$AGGREGATE_CANCER\n' +
-                         '* Usage: python '+sys.argv[0]+' --maf_file <path_to_maf_file> ' +
-                         '--out_file <path_to_output_file>\n' +
+                         '* Usage: python '+sys.argv[0]+' --maf_file <input_file> ' +
+                         '--out_file <output_file>\n' +
                          'Exiting.\n')
         sys.exit(1)
 
@@ -890,8 +890,8 @@ if __name__ == "__main__":
                          '* Please obtain this directory by running: \n' +
                          '    > wget http://compbio.cs.princeton.edu/pertinint/PertInInt-tracks_v0.tar.gz\n' +
                          '    > tar -xvzf PertInInt-tracks_v0.tar.gz\n' +
-                         '* Usage: python '+sys.argv[0]+' --maf_file <path_to_maf_file> ' +
-                         '--out_file <path_to_output_file> --track_path <path_to_precomputed_tracks>\n' +
+                         '* Usage: python '+sys.argv[0]+' --maf_file <input_file> ' +
+                         '--out_file <output_file> --track_path <path_to_precomputed_tracks>\n' +
                          'Exiting.\n')
         sys.exit(1)
 
@@ -900,8 +900,8 @@ if __name__ == "__main__":
                          '* Please obtain this file by running: \n' +
                          '    > wget https://github.com/Singh-Lab/PertInInt/raw/master/' +
                          'GRCh38_ensembl_gene_list.tsv.gz\n' +
-                         '* Usage: python ' + sys.argv[0] + ' --maf_file <path_to_maf_file> ' +
-                         '--out_file <path_to_output_file> --expression_file <path_to_gene_mapping_file>\n' +
+                         '* Usage: python ' + sys.argv[0] + ' --maf_file <input_file> ' +
+                         '--out_file <output_file> --ensembl_annotation_file <gene_mapping_file>\n' +
                          'Exiting.\n')
         sys.exit(1)
 
@@ -909,10 +909,10 @@ if __name__ == "__main__":
         sys.stderr.write('* Could not open expression file: '+args.expression_file + '\n' +
                          '* Please obtain this file by running: \n' +
                          '    > wget http://compbio.cs.princeton.edu/pertinint/TCGA_GRCh38_expressed-genes_TPM.tsv.gz\n' +
-                         '* Usage (option #1): python ' + sys.argv[0] + ' --maf_file <path_to_maf_file> ' +
-                         '--out_file <path_to_output_file> --expression_file <path_to_expression_file>\n' +
-                         '* Usage (option #2): python ' + sys.argv[0] + ' --maf_file <path_to_maf_file> ' +
-                         '--out_file <path_to_output_file> --no_expression\n' +
+                         '* Usage (option #1): python ' + sys.argv[0] + ' --maf_file <input_file> ' +
+                         '--out_file <output_file> --expression_file <expression_file>\n' +
+                         '* Usage (option #2): python ' + sys.argv[0] + ' --maf_file <input_file> ' +
+                         '--out_file <output_file> --no_expression\n' +
                          'Exiting.\n')
         sys.exit(1)
 
@@ -920,10 +920,10 @@ if __name__ == "__main__":
         sys.stderr.write('* Could not open driver annotation file: ' + args.driver_annotation_file + '\n' +
                          '* Please obtain this file by running: \n' +
                          '    > wget https://github.com/Singh-Lab/PertInInt/raw/master/GRCh38_driver_gene_list.tsv.gz\n' +
-                         '* Usage (option #1): python ' + sys.argv[0] + ' --maf_file <path_to_maf_file> ' +
-                         '--out_file <path_to_output_file> --driver_annotation_file <path_to_annotation_file>\n' +
-                         '* Usage (option #2): python ' + sys.argv[0] + ' --maf_file <path_to_maf_file> ' +
-                         '--out_file <path_to_output_file> --no_driver_id\n' +
+                         '* Usage (option #1): python ' + sys.argv[0] + ' --maf_file <input_file> ' +
+                         '--out_file <output_file> --driver_annotation_file <annotation_file>\n' +
+                         '* Usage (option #2): python ' + sys.argv[0] + ' --maf_file <input_file> ' +
+                         '--out_file <output_file> --no_driver_id\n' +
                          'Exiting.\n')
         sys.exit(1)
 
@@ -931,8 +931,8 @@ if __name__ == "__main__":
     # (ii) make sure that output file can be written to (exit quickly otherwise)
     if not args.out_file:
         sys.stderr.write('* Could not write to specified output file: ' + str(args.out_file) + '\n' +
-                         '* Usage: python '+sys.argv[0]+' --maf_file <path_to_maf_file> ' +
-                         '--out_file <path_to_output_file>\n' +
+                         '* Usage: python '+sys.argv[0]+' --maf_file <input_file> ' +
+                         '--out_file <output_file>\n' +
                          'Exiting.\n')
         sys.exit(1)
 

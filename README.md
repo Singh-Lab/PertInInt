@@ -11,9 +11,9 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
 * **Precomputed Tracks.** PertInInt models different functional regions of a protein as "tracks". These tracks can represent interaction interfaces, functional protein domains and conserved protein positions. To download the set of precomputed tracks used by PertInInt (which will be unzipped into a directory called `track_weights/`), run the following: 
 
   ```bash
-  PERTININT_TRACKS="PertInInt-tracks_v0.tar.gz"
-  wget http://compbio.cs.princeton.edu/pertinint/${PERTININT_TRACKS}
-  tar -xvzf ${PERTININT_TRACKS}
+  PERTININT_TRACKS=PertInInt-tracks_v0.tar.gz
+  wget http://compbio.cs.princeton.edu/pertinint/$PERTININT_TRACKS
+  tar -xvzf $PERTININT_TRACKS
   ```
 
 * **Ensembl ID &rarr; Gene Name mapping.** In order to parse .maf files containing mutations annotated to gene *names* rather than to Ensembl gene identifiers, we provide a mapping of Ensembl identifiers to primary HGNC gene symbols in `GRCh38_ensembl_gene_list.tsv.gz`. You can customize this file to associate each Ensembl gene identifier with any other useful gene identifiers. 
@@ -24,9 +24,9 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
 
   ```bash
   if [ ! -d mafs ]; then mkdir mafs; fi
-  AGGREGATE_CANCER="TCGA.Aggregate.muse.aggregated.somatic.maf.gz"
-  wget http://compbio.cs.princeton.edu/pertinint/${AGGREGATE_CANCER} -O mafs/${AGGREGATE_CANCER}
-  gzip -d mafs/${AGGREGATE_CANCER}
+  AGGREGATE_CANCER=TCGA.Aggregate.muse.aggregated.somatic.maf.gz
+  wget http://compbio.cs.princeton.edu/pertinint/$AGGREGATE_CANCER -O mafs/$AGGREGATE_CANCER
+  gzip -d mafs/$AGGREGATE_CANCER
   ```
 
 * **Expression Data.** We find that PertInInt's performance improves when limiting to those somatic mutations that fall into proteins that are expressed at TPM (transcripts per million) > 0.1. To download the list of genes and corresponding TCGA sample identifiers (across all 33 cancer types) with that gene expressed at TPM > 0.1, run the following: 

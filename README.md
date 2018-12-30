@@ -8,7 +8,7 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
 
 ### 1: Downloading (required) preliminary data
 
-* **Precomputed Tracks.** PertInInt uses models different functional regions of a protein as "tracks". These tracks can represent interaction interfaces, functional protein domains and conserved protein positions. To download the set of precomputed tracks used by PertInInt (which will be unzipped into a directory called `track_weights/`), run the following: 
+* **Precomputed Tracks.** PertInInt models different functional regions of a protein as "tracks". These tracks can represent interaction interfaces, functional protein domains and conserved protein positions. To download the set of precomputed tracks used by PertInInt (which will be unzipped into a directory called `track_weights/`), run the following: 
 
   ```bash
   PERTININT_TRACKS="PertInInt-tracks_v0.tar.gz"
@@ -37,11 +37,11 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
 
 ### 3: Run PertInInt
 
-* By default, PertInInt returns a ranked list of Ensembl gene identifiers in descending order by *Z*-score. We automatically annotate these genes with their "driver status" corresponding to their presence in any lists of known cancer driver genes, as well as with their "gene name" corresponding to their primary HGNC gene symbol. The required mapping files for these two annotation steps are provided in this repository: 
+* In order to parse .maf files containing mutations annotated to gene *names* rather than to Ensembl gene identifiers, we map Ensembl identifiers to primary HGNC gene symbols. By default, PertInInt returns a ranked list of Ensembl gene identifiers in descending order by *Z*-score. We automatically annotate these genes with their "driver status" corresponding to their presence in any lists of known cancer driver genes. The required mapping files for these two steps are provided in this repository: 
 
-  + **Known Driver Genes** are listed in `GRCh38_driver_gene_list.tsv.gz`. You can customize this file (following the same tab-delimited formatting) however you like. To turn off this annotation option, run with the `--no_driver_id` flag.
+  + **Ensembl ID &rarr; Gene Name Mapping** is found in `GRCh38_ensembl_gene_list.tsv.gz`. This file can be customized to annotate each Ensembl gene identifier with any other useful gene names or identifiers. *This file is required to run PertInInt on an input .maf file.*
 
-  + **Ensembl ID &rarr; Gene Name Mapping** is found in `GRCh38_ensembl_gene_list.tsv.gz`. Again, this file can be customized to annotate each Ensembl gene identifier with any other useful gene names or identifiers. To turn off this annotation option, run with the `--no_gene_name` flag. 
+  + **Known Driver Genes** are listed in `GRCh38_driver_gene_list.tsv.gz`. You can customize this file (following the same tab-delimited formatting) however you like. If you prefer not to annotate output with any driver information, you can turn this option off by running PertInInt with the `--no_driver_id` flag.
 
 * To run PertInInt: 
 
@@ -76,7 +76,7 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
 
 ### 4: Parsing PertInInt output
 
-* Each gene ranked by PertInInt is also associated with a comma-delimited list of individual functional regions with (positive) *Z*-scores. To aid in downstream functional analyses, we provide a script for your convenience to parse this output to create a tab-delimited table highlighting which track types (e.g., specific interaction sites or domains) "light up" for particular genes:
+* Each gene ranked by PertInInt is also associated with a comma-delimited list of individual functional regions with positive *Z*-scores. To aid in downstream functional analyses, we provide a script for your convenience to parse this output into a tab-delimited table highlighting the track types (e.g., specific interaction sites or domains) that are significantly mutated in particular genes:
 
   ```bash
   python highlight_mechanism.py --pertinint_results output/TCGA.Aggregate.muse.aggregated.somatic-PertInInt_output.tsv

@@ -13,7 +13,7 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
   ```bash
   PERTININT_TRACKS=PertInInt-tracks_v0.tar.gz
   wget http://compbio.cs.princeton.edu/pertinint/$PERTININT_TRACKS
-  tar -xvzf ${PERTININT_TRACKS}
+  tar -xvzf $PERTININT_TRACKS
   ```
 
 * **Ensembl ID &rarr; Gene Name mapping.** In order to parse .maf files containing mutations annotated to gene *names* rather than to Ensembl gene identifiers, we provide a mapping of Ensembl identifiers to primary HGNC gene symbols in `GRCh38_ensembl_gene_list.tsv.gz`. You can customize this file to associate each Ensembl gene identifier with any other useful gene identifiers. 

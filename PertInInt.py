@@ -680,6 +680,67 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
 # CREATE FINAL OUTPUT FILE
 ####################################################################################################
 
+def mapping_gene_to_name(annotation_file):
+    """
+    :param annotation_file: full path to a tab-delimited file with Ensembl gene ID and primary gene names
+    :return: dictionary Ensembl gene ID -> primary gene name
+    """
+
+    gene_to_name = {}
+    annot_handle = gzip.open(annotation_file, 'rt') if annotation_file.endswith('gz') else open(annotation_file)
+    header = None
+    for annot_line in annot_handle:
+        if annot_line.startswith('#'):
+            continue
+        elif not header:
+            header = annot_line[:-1].split('\t')
+            continue
+        gene_zscore = annot_line[:-1].split('\t')
+        gene_id = gene_zscore[header.index('ensembl_gene_id')]
+        gene_name = gene_zscore[header.index('primary_gene_name(s)')]
+        gene_to_name[gene_id] = gene_name
+    annot_handle.close()
+
+    return gene_to_name
+
+
+####################################################################################################
+
+def mapping_gene_to_driver(annotate_drivers, driver_annotation_file):
+    """
+    :param annotate_drivers: boolean indicating whether drivers should be annotated at all
+    :param driver_annotation_file: full path to a tab-delimited file with Ensembl gene ID and driver status
+    :return: dictionary Ensembl gene ID -> driver status AND list of driver status definitions (commented)
+    """
+
+    gene_to_cancer = {}
+    cancer_header = []
+    if annotate_drivers:
+        if driver_annotation_file.endswith('gz'):
+            annot_handle = gzip.open(driver_annotation_file, 'rt')
+        else:
+            annot_handle = open(driver_annotation_file)
+        header = None
+        for annot_line in annot_handle:
+            if annot_line.startswith('##'):
+                cancer_header.append(annot_line)
+                continue
+            elif annot_line.startswith('#'):
+                continue
+            elif not header:
+                header = annot_line[:-1].split('\t')
+                continue
+            gene_zscore = annot_line[:-1].split('\t')
+            gene_id = gene_zscore[header.index('ensembl_gene_id')]
+            cancer_status = gene_zscore[header.index('cancer_driver_status')]
+            gene_to_cancer[gene_id] = cancer_status
+        annot_handle.close()
+
+    return gene_to_cancer, cancer_header
+
+
+####################################################################################################
+
 def reformat_results(input_files, concatenated_output_file, annotation_file, annotate_drivers=False,
                      driver_annotation_file=None):
     """
@@ -716,7 +777,7 @@ def reformat_results(input_files, concatenated_output_file, annotation_file, ann
             # (3) and also which tracks had positive Z-scores:
             track_names = {}
             if len(v) > header.index('track_zscores') and len(v[header.index('track_zscores')].strip()) > 0:
-                bd_tracks = v[header.index('track_zscores')]
+                bd_tracks = v[header.index('track_zscores')].strip()
                 track_names = {tname.split('|')[0]: float(tname.split('|')[1]) for tname in bd_tracks.split(';')}
 
             # (4) include this gene if it hasn't yet been observed:
@@ -728,8 +789,7 @@ def reformat_results(input_files, concatenated_output_file, annotation_file, ann
             # (5) update the total seconds, score, and track names otherwise
             else:
                 # (5a) update the score (i.e., take the maximum)
-                if gene_zscore > gene_to_score[gene_id]['score']:
-                    gene_to_score[gene_id]['score'] = gene_zscore
+                gene_to_score[gene_id]['score'] = max(gene_to_score[gene_id]['score'], gene_zscore)
 
                 # (5b) tack onto the total time
                 gene_to_score[gene_id]['time'] += total_seconds
@@ -743,62 +803,21 @@ def reformat_results(input_files, concatenated_output_file, annotation_file, ann
                                                                          zscore)
         infile_handle.close()
 
-    # (6) get the total time to run ALL genes, and reformat the time (to display) for each individual gene
-    total_runtime = 0  # total across all protein isoforms and genes
-    for gene_id in gene_to_score.keys():
-        total_runtime += gene_to_score[gene_id]['time']
-        gene_to_score[gene_id]['time'] = reformat_time(gene_to_score[gene_id]['time'])
+    # (6) get the total time to run ALL genes
+    total_runtime = sum([gv['time'] for gv in gene_to_score.values()])
 
-    # (7) convert track names to full list:
-    for gene_id in gene_to_score.keys():
-        gene_to_score[gene_id]['tracks'] = ';'.join([str(tn) + '|' + str(zs) for tn, zs in
-                                                     gene_to_score[gene_id]['tracks'].items()])
-
-    # (8) get the final list of sorted genes
-    final_sorted_genes = sorted([(gene_vals['score'], gene_id, gene_vals['tracks'], gene_vals['time'])
+    # (7) get the final list of sorted genes, reformatting the track names and time to be strings
+    final_sorted_genes = sorted([(gene_vals['score'],
+                                  gene_id,
+                                  ';'.join([str(tn) + '|' + str(zs) for tn, zs in gene_vals['tracks'].items()]),
+                                  reformat_time(gene_vals['time']))
                                  for gene_id, gene_vals in gene_to_score.items()], reverse=True)
 
-    # (9) map Ensembl gene ID -> primary gene name
-    gene_to_name = {}
-    annot_handle = gzip.open(annotation_file, 'rt') if annotation_file.endswith('gz') else open(annotation_file)
-    header = None
-    for annot_line in annot_handle:
-        if annot_line.startswith('#'):
-            continue
-        elif not header:
-            header = annot_line[:-1].split('\t')
-            continue
-        gene_zscore = annot_line[:-1].split('\t')
-        gene_id = gene_zscore[header.index('ensembl_gene_id')]
-        gene_name = gene_zscore[header.index('primary_gene_name(s)')]
-        gene_to_name[gene_id] = gene_name
-    annot_handle.close()
+    # (8) finally write out results!
+    gene_to_name = mapping_gene_to_name(annotation_file)  # Ensembl gene ID -> primary gene name
+    (gene_to_cancer,  # # Ensembl gene ID -> cancer driver status if desired
+     cancer_header) = mapping_gene_to_driver(annotate_drivers, driver_annotation_file)
 
-    # (10) get Ensembl gene ID -> cancer driver status if desired
-    gene_to_cancer = {}
-    cancer_header = []
-    if annotate_drivers:
-        if driver_annotation_file.endswith('gz'):
-            annot_handle = gzip.open(driver_annotation_file, 'rt')
-        else:
-            annot_handle = open(driver_annotation_file)
-        header = None
-        for annot_line in annot_handle:
-            if annot_line.startswith('##'):
-                cancer_header.append(annot_line)
-                continue
-            elif annot_line.startswith('#'):
-                continue
-            elif not header:
-                header = annot_line[:-1].split('\t')
-                continue
-            gene_zscore = annot_line[:-1].split('\t')
-            gene_id = gene_zscore[header.index('ensembl_gene_id')]
-            cancer_status = gene_zscore[header.index('cancer_driver_status')]
-            gene_to_cancer[gene_id] = cancer_status
-        annot_handle.close()
-
-    # (11) finally write out results!
     concat_outhandle = open(concatenated_output_file, 'w')
     concat_outhandle.write('\n'.join(['# PertInInt (v0) results',
                                       '# Time to run = ' + reformat_time(total_runtime)] + cancer_header +
@@ -812,7 +831,7 @@ def reformat_results(input_files, concatenated_output_file, annotation_file, ann
             '\t'.join([cancer_status, gene_full_name, str(gene_zscore), gene_runtime, track_zs]) + '\n')
     concat_outhandle.close()
 
-    # (12) clean up the temporary (unformatted) output files
+    # (9) clean up the temporary (unformatted) output files
     for infile in input_files:
         if infile != concatenated_output_file:
             call(['rm', infile])

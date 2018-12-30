@@ -873,42 +873,53 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------------------------------
     # (i) check if required files are all present
     if not args.maf_file or not os.path.isfile(args.maf_file):
-        sys.stderr.write('Could not open maf mutation file: ' + str(args.maf_file) + '\n' +
-                         'Please obtain a sample .maf file by running: \n' +
-                         '   if [ ! -d mafs ]; then mkdir mafs; fi\n' +
-                         '   AGGREGATE_CANCER="TCGA.Aggregate.muse.aggregated.somatic.maf.gz"\n' +
-                         '   wget http://compbio.cs.princeton.edu/pertinint/${AGGREGATE_CANCER} ' +
-                         '-O mafs/${AGGREGATE_CANCER}\n' +
-                         '   gzip -d mafs/${AGGREGATE_CANCER}\n' +
+        sys.stderr.write('* Could not open maf mutation file: ' + str(args.maf_file) + '\n' +
+                         '* Please obtain a sample .maf file by running: \n' +
+                         '    > if [ ! -d mafs ]; then mkdir mafs; fi\n' +
+                         '    > AGGREGATE_CANCER=TCGA.Aggregate.muse.aggregated.somatic.maf.gz\n' +
+                         '    > wget http://compbio.cs.princeton.edu/pertinint/$AGGREGATE_CANCER ' +
+                         '-O mafs/$AGGREGATE_CANCER\n' +
+                         '    > gzip -d mafs/$AGGREGATE_CANCER\n' +
+                         '* Usage: python '+sys.argv[0]+' --maf_file <path_to_maf_file> ' +
+                         '--out_file <path_to_output_file>\n' +
                          'Exiting.\n')
         sys.exit(1)
 
     if not os.path.isdir(args.track_path):
-        sys.stderr.write('Could not find directory to precomputed tracks: ' + args.track_path+'\n' +
-                         'Please obtain this directory by running: \n' +
-                         '   wget http://compbio.cs.princeton.edu/pertinint/PertInInt-tracks_v0.tar.gz\n' +
-                         '   tar -xvzf PertInInt-tracks_v0.tar.gz\n' +
+        sys.stderr.write('* Could not find directory to precomputed tracks: ' + args.track_path+'\n' +
+                         '* Please obtain this directory by running: \n' +
+                         '    > wget http://compbio.cs.princeton.edu/pertinint/PertInInt-tracks_v0.tar.gz\n' +
+                         '    > tar -xvzf PertInInt-tracks_v0.tar.gz\n' +
+                         '* Usage: python '+sys.argv[0]+' --maf_file <path_to_maf_file> ' +
+                         '--out_file <path_to_output_file> --track_path <path_to_precomputed_tracks>\n' +
                          'Exiting.\n')
         sys.exit(1)
 
     if not os.path.isfile(args.ensembl_annotation_file):
-        sys.stderr.write('Could not open gene ID mapping file: '+args.ensembl_annotation_file + '\n' +
-                         'Please obtain this file by running: \n' +
-                         '   wget https://github.com/Singh-Lab/PertInInt/raw/master/GRCh38_ensembl_gene_list.tsv.gz\n' +
+        sys.stderr.write('* Could not open gene ID mapping file: '+args.ensembl_annotation_file + '\n' +
+                         '* Please obtain this file by running: \n' +
+                         '    > wget https://github.com/Singh-Lab/PertInInt/raw/master/' +
+                         'GRCh38_ensembl_gene_list.tsv.gz\n' +
+                         '* Usage: python ' + sys.argv[0] + ' --maf_file <path_to_maf_file> ' +
+                         '--out_file <path_to_output_file> --expression_file <path_to_gene_mapping_file>\n' +
                          'Exiting.\n')
         sys.exit(1)
 
     if args.limit_expression and not os.path.isfile(args.expression_file):
-        sys.stderr.write('Could not open expression file: '+args.expression_file + '\n' +
-                         'Please obtain this file by running: \n' +
-                         '   wget http://compbio.cs.princeton.edu/pertinint/TCGA_GRCh38_expressed-genes_TPM.tsv.gz\n' +
+        sys.stderr.write('* Could not open expression file: '+args.expression_file + '\n' +
+                         '* Please obtain this file by running: \n' +
+                         '    > wget http://compbio.cs.princeton.edu/pertinint/TCGA_GRCh38_expressed-genes_TPM.tsv.gz\n' +
+                         '* Usage: python ' + sys.argv[0] + ' --maf_file <path_to_maf_file> ' +
+                         '--out_file <path_to_output_file> --expression_file <path_to_expression_file>\n' +
                          'Proceeding WITHOUT restricting mutations to those falling into expressed genes.\n')
         args.limit_expression = False
 
     if args.annotate_drivers and not os.path.isfile(args.driver_annotation_file):
-        sys.stderr.write('Could not open driver annotation file: ' + args.driver_annotation_file + '\n' +
-                         'Please obtain this file by running: \n' +
-                         '   wget https://github.com/Singh-Lab/PertInInt/raw/master/GRCh38_driver_gene_list.tsv.gz\n' +
+        sys.stderr.write('* Could not open driver annotation file: ' + args.driver_annotation_file + '\n' +
+                         '* Please obtain this file by running: \n' +
+                         '    > wget https://github.com/Singh-Lab/PertInInt/raw/master/GRCh38_driver_gene_list.tsv.gz\n' +
+                         '* Usage: python ' + sys.argv[0] + ' --maf_file <path_to_maf_file> ' +
+                         '--out_file <path_to_output_file> --driver_annotation_file <path_to_annotation_file>\n' +
                          'Proceeding WITHOUT annotating cancer driver genes in output file.\n')
         args.annotate_drivers = False
 

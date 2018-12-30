@@ -15,7 +15,9 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
   wget http://compbio.cs.princeton.edu/pertinint/${PERTININT_TRACKS}
   tar -xvzf ${PERTININT_TRACKS}
   ```
-  
+
+* **Ensembl ID &rarr; Gene Name mapping.** In order to parse .maf files containing mutations annotated to gene *names* rather than to Ensembl gene identifiers, we provide a mapping of Ensembl identifiers to primary HGNC gene symbols in `GRCh38_ensembl_gene_list.tsv.gz`. You can customize this file to associate each Ensembl gene identifier with any other useful gene identifiers. 
+
 ### 2: Downloading (optional) preliminary data  
 
 * **Somatic Mutations.** PertInInt runs on any input .maf file. We tested PertInInt using a .maf file containing somatic mutations from all 33 TCGA cancer types, obtained from [NCI's Genomic Data Commons](https://gdc.cancer.gov) on December 6, 2018. To download this aggregated .maf file to test on, run the following: 
@@ -35,13 +37,9 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
   
   Of course, if you are looking at a different set of samples and do not have any expression information (or if you would prefer not to limit somatic mutations by expression), simply set the `--no_expression` tag when running PertInInt.
 
+* **Ensembl ID &rarr; Cancer Driver Status mapping.** PertInInt returns a ranked list of Ensembl gene identifiers in descending order by *Z*-score. Using the `GRCh38_driver_gene_list.tsv.gz` file provided in this respository, we automatically annotate this list with each gene's presence in list(s) of known cancer driver genes. Customize this file as you like, noting that lines beginning with `##` describe the driver gene list(s) used. *If you prefer not to annotate output with any driver information,* you can turn this option off by simply setting the `--no_driver_id` tag when running PertInInt.
+
 ### 3: Run PertInInt
-
-* In order to parse .maf files containing mutations annotated to gene *names* rather than to Ensembl gene identifiers, we map Ensembl identifiers to primary HGNC gene symbols. By default, PertInInt returns a ranked list of Ensembl gene identifiers in descending order by *Z*-score. We automatically annotate these genes with their "driver status" corresponding to their presence in any lists of known cancer driver genes. The required mapping files for these two steps are provided in this repository: 
-
-  + **Ensembl ID &rarr; Gene Name Mapping** is found in `GRCh38_ensembl_gene_list.tsv.gz`. This file can be customized to annotate each Ensembl gene identifier with any other useful gene names or identifiers. *This file is required to run PertInInt on an input .maf file.*
-
-  + **Known Driver Genes** are listed in `GRCh38_driver_gene_list.tsv.gz`. You can customize this file (following the same tab-delimited formatting) however you like. If you prefer not to annotate output with any driver information, you can turn this option off by running PertInInt with the `--no_driver_id` flag.
 
 * To run PertInInt: 
 
@@ -54,7 +52,7 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
                       --ensembl_annotation_file GRCh38_ensembl_gene_list.tsv.gz
   ```
 
-* Finally, PertInInt automatically includes all four track types presented in the original publication of our paper. You can choose to run PertInInt on a subset of track types by specifying one of the following options using the `--restriction` argument:
+* PertInInt automatically includes all four track types presented in the original publication of our paper. You can choose to run PertInInt on a subset of track types by specifying one of the following options using the `--restriction` argument:
 
   | argument | track types included |
   | -------- | -------------------- | 

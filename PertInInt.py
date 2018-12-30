@@ -845,8 +845,8 @@ if __name__ == "__main__":
 
     # ------------------------------------------------------------------------------------------------
     parser = argparse.ArgumentParser(description='Return genes that are enriched for mutations in functional sites.')
-    parser.add_argument('--maf_file', type=str, help='Mutation file (.maf format)')
-    parser.add_argument('--out_file', type=str, help='Results output file')
+    parser.add_argument('--maf_file', type=str, help='Mutation file (.maf format)', default=None)
+    parser.add_argument('--out_file', type=str, help='Results output file', default=None)
     parser.add_argument('--ensembl_annotation_file', type=str, default='GRCh38_ensembl_gene_list.tsv.gz',
                         help='Tab-delimited list of Ensembl gene identifiers and their primary gene names')
     parser.add_argument('--track_path', type=str, help='Full path to directory containing track weight information',
@@ -872,7 +872,7 @@ if __name__ == "__main__":
 
     # ------------------------------------------------------------------------------------------------
     # (i) check if required files are all present
-    if not os.path.isfile(args.maf_file):
+    if not args.maf_file or not os.path.isfile(args.maf_file):
         sys.stderr.write('Could not open maf mutation file: ' + args.maf_file + '\n' +
                          'Please obtain a sample .maf file by running: \n' +
                          '   if [ ! -d mafs ]; then mkdir mafs; fi\n' +

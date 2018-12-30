@@ -873,7 +873,7 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------------------------------
     # (i) check if required files are all present
     if not args.maf_file or not os.path.isfile(args.maf_file):
-        sys.stderr.write('Could not open maf mutation file: ' + args.maf_file + '\n' +
+        sys.stderr.write('Could not open maf mutation file: ' + str(args.maf_file) + '\n' +
                          'Please obtain a sample .maf file by running: \n' +
                          '   if [ ! -d mafs ]; then mkdir mafs; fi\n' +
                          '   AGGREGATE_CANCER="TCGA.Aggregate.muse.aggregated.somatic.maf.gz"\n' +

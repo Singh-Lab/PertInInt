@@ -696,7 +696,6 @@ def mapping_gene_to_name(annotation_file):
             header = annot_line[:-1].split('\t')
             continue
         gene_zscore = annot_line[:-1].split('\t')
-        print header
         gene_id = gene_zscore[header.index('ensembl_gene_id')]
         gene_name = gene_zscore[header.index('primary_gene_names')]
         gene_to_name[gene_id] = gene_name

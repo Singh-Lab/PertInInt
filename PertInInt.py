@@ -696,6 +696,7 @@ def mapping_gene_to_name(annotation_file):
             header = annot_line[:-1].split('\t')
             continue
         gene_zscore = annot_line[:-1].split('\t')
+        print header
         gene_id = gene_zscore[header.index('ensembl_gene_id')]
         gene_name = gene_zscore[header.index('primary_gene_name(s)')]
         gene_to_name[gene_id] = gene_name
@@ -881,8 +882,7 @@ if __name__ == "__main__":
                          '-O mafs/$AGGREGATE_CANCER\n' +
                          '    > gzip -d mafs/$AGGREGATE_CANCER\n' +
                          '* Usage: python '+sys.argv[0]+' --maf_file <input_file> ' +
-                         '--out_file <output_file>\n' +
-                         'Exiting.\n')
+                         '--out_file <output_file>\n')
         sys.exit(1)
 
     if not os.path.isdir(args.track_path):
@@ -891,8 +891,7 @@ if __name__ == "__main__":
                          '    > wget http://compbio.cs.princeton.edu/pertinint/PertInInt-tracks_v0.tar.gz\n' +
                          '    > tar -xvzf PertInInt-tracks_v0.tar.gz\n' +
                          '* Usage: python '+sys.argv[0]+' --maf_file <input_file> ' +
-                         '--out_file <output_file> --track_path <path_to_precomputed_tracks>\n' +
-                         'Exiting.\n')
+                         '--out_file <output_file> --track_path <path_to_precomputed_tracks>\n')
         sys.exit(1)
 
     if not os.path.isfile(args.ensembl_annotation_file):
@@ -901,8 +900,7 @@ if __name__ == "__main__":
                          '    > wget https://github.com/Singh-Lab/PertInInt/raw/master/' +
                          'GRCh38_ensembl_gene_list.tsv.gz\n' +
                          '* Usage: python ' + sys.argv[0] + ' --maf_file <input_file> ' +
-                         '--out_file <output_file> --ensembl_annotation_file <gene_mapping_file>\n' +
-                         'Exiting.\n')
+                         '--out_file <output_file> --ensembl_annotation_file <gene_mapping_file>\n')
         sys.exit(1)
 
     if args.limit_expression and not os.path.isfile(args.expression_file):
@@ -912,8 +910,7 @@ if __name__ == "__main__":
                          '* Usage (option #1): python ' + sys.argv[0] + ' --maf_file <input_file> ' +
                          '--out_file <output_file> --expression_file <expression_file>\n' +
                          '* Usage (option #2): python ' + sys.argv[0] + ' --maf_file <input_file> ' +
-                         '--out_file <output_file> --no_expression\n' +
-                         'Exiting.\n')
+                         '--out_file <output_file> --no_expression\n')
         sys.exit(1)
 
     if args.annotate_drivers and not os.path.isfile(args.driver_annotation_file):
@@ -923,8 +920,7 @@ if __name__ == "__main__":
                          '* Usage (option #1): python ' + sys.argv[0] + ' --maf_file <input_file> ' +
                          '--out_file <output_file> --driver_annotation_file <annotation_file>\n' +
                          '* Usage (option #2): python ' + sys.argv[0] + ' --maf_file <input_file> ' +
-                         '--out_file <output_file> --no_driver_id\n' +
-                         'Exiting.\n')
+                         '--out_file <output_file> --no_driver_id\n')
         sys.exit(1)
 
     # ------------------------------------------------------------------------------------------------
@@ -932,8 +928,7 @@ if __name__ == "__main__":
     if not args.out_file:
         sys.stderr.write('* Could not write to specified output file: ' + str(args.out_file) + '\n' +
                          '* Usage: python '+sys.argv[0]+' --maf_file <input_file> ' +
-                         '--out_file <output_file>\n' +
-                         'Exiting.\n')
+                         '--out_file <output_file>\n')
         sys.exit(1)
 
     for subdir in ['/'.join(args.out_file.split('/')[:ind]) for ind in xrange(2, args.out_file.count('/')+1)]:
@@ -944,7 +939,8 @@ if __name__ == "__main__":
 
     # ------------------------------------------------------------------------------------------------
     # (1) get paths to genes we can model
-    sys.stderr.write('(1) Getting paths to proteins (in '+args.track_path+' directory) that can be modeled...\n')
+    sys.stderr.write('(1) Getting paths to proteins that can be modeled...\n' +
+                     '    > tracks directory: '+args.track_path+'\n')
     start = time.time()
     prot_to_trackfile, prot_to_geneid = track_weights_list(args.track_path)
     sys.stderr.write('    > finished in '+reformat_time(time.time()-start)+'\n')
@@ -953,9 +949,10 @@ if __name__ == "__main__":
     # (2) read in mutations for those genes that can modeled
     # NOTE: for whole gene tracks, we measure all nonsynonymous mutations, whereas for within-protein tracks,
     #       we are only interested in missense mutations
-    sys.stderr.write('(2) Reading in mutation data from '+args.maf_file+'...\n' +
+    sys.stderr.write('(2) Reading in mutation data...\n' +
+                     '    > input maf file: ' + args.maf_file + '\n' +
                      ('' if not args.limit_expression else
-                      '    > Limiting to mutations in expressed genes found in: ' + args.expression_file + '\n'))
+                      '    > expressed genes list: ' + args.expression_file + '\n'))
     start = time.time()
 
     (mut_locs,  # prot_id -> [(0-index position of missense mutation, mutational value), ...]
@@ -1000,9 +997,10 @@ if __name__ == "__main__":
 
     # ------------------------------------------------------------------------------------------------
     # (4) reformat per-protein results:
-    sys.stderr.write('(4) Reformatting temporary output into '+args.out_file+'...\n' +
+    sys.stderr.write('(4) Reformatting intermediate output...\n' +
+                     '    > final output file: ' + args.out_file + '\n' +
                      ('' if not args.annotate_drivers else
-                      '    > Annotating with cancer driver status from: ' + args.driver_annotation_file + '\n'))
+                      '    > cancer driver annotations: ' + args.driver_annotation_file + '\n'))
     start = time.time()
     reformat_results([args.out_file + '-tmp'], args.out_file, args.ensembl_annotation_file,
                      args.annotate_drivers, args.driver_annotation_file if args.annotate_drivers else None)

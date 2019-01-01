@@ -349,10 +349,10 @@ def covariance_to_correlation(cov_matrix):
 
 ####################################################################################################
 
-def get_observed_mu_covariance(mutation_indices, weightfile, restriction='none'):
+def get_observed_mu_covariance(mutation_indices, weightfile_handle, header, aggregate_names, restriction='none'):
     """
     :param mutation_indices: list of mutated indices in this protein
-    :param weightfile: full path to a file containing all binding potential weight tracks for the given protein
+    :param weightfile_handle: OPEN file handle containing all binding potential weight tracks for the given protein
     :param restriction: str indicating a particular subset of tracks to consider (e.g., interaction, conservation, dom)
     :return: the expected score for each track, the observed scores for each track, the complete covariance
              matrix of all tracks with 1+ mutations, and the ordered list of track IDs that we have scores for
@@ -366,21 +366,8 @@ def get_observed_mu_covariance(mutation_indices, weightfile, restriction='none')
     intervals = {}  # track_id -> string of intervals (e.g., 2-10,20-45,90-100); needed if expected_muts == 'observed'
     track_names = {}  # track_id -> track_name
 
-    # get list of domains that occur 40+ times in this protein (we will ONLY consider aggregate tracks in these cases)
-    aggregate_names = None
-    if restriction in ['none', 'interaction', 'nointeraction', 'domain', 'nodomain', 'noconservation', 'nowholegene',
-                       'intercons', 'interdom', 'interwholegene', 'domcons', 'domwholegene']:
-        aggregate_names = aggregate_domain_tracks(weightfile)
-
-    weightfile_handle = gzip.open(weightfile) if weightfile.endswith('gz') else open(weightfile)
-    header = None
+    # process each line in the weightfile
     for wline in weightfile_handle:
-        if wline.startswith('#'):
-            continue
-        elif not header:
-            header = wline[:-1].split('\t')
-            continue
-
         v = wline[:-1].split('\t')
         track_id = v[header.index('track_id')]
         track_name = v[header.index('track_name')]
@@ -448,8 +435,6 @@ def get_observed_mu_covariance(mutation_indices, weightfile, restriction='none')
 
             covariances[track_id][other_id] = (cov_score, likelihood_track, likelihood_other)
             covariances[other_id][track_id] = (cov_score, likelihood_other, likelihood_track)
-
-    weightfile_handle.close()
 
     # nothing passed! return empty:
     if len(observed.keys()) < 1:
@@ -590,6 +575,7 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
     if not weightfile:
         return 0., ';'.join(final_zscores)
 
+    """
     try:
         weightfile_handle = gzip.open(weightfile) if weightfile.endswith('gz') else open(weightfile)
         for _ in weightfile_handle:
@@ -597,31 +583,44 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
         weightfile_handle.close()
     except (IOError, StopIteration) as _:  # weightfile is corrupted
         return 0., ';'.join(final_zscores)
+    """
 
-    # (2) start with the whole gene Z-score if specified
+    # (2) get list of domains that occur 40+ times in this protein (we will ONLY consider agg tracks in these cases)
+    aggregate_names = None
+    if restriction in ['none', 'interaction', 'nointeraction', 'domain', 'nodomain', 'noconservation', 'nowholegene',
+                       'intercons', 'interdom', 'interwholegene', 'domcons', 'domwholegene']:
+        aggregate_names = aggregate_domain_tracks(weightfile)
+
+    # (3) start with the whole gene Z-score if specified
     wholegene_zscore = 0.
-    if restriction not in ['interaction', 'domain', 'conservation', 'interdom', 'intercons', 'domcons', 'nowholegene']:
-        gene_probability = None
-        weightfile_handle = gzip.open(weightfile) if weightfile.endswith('gz') else open(weightfile)
-        for wt_line in weightfile_handle:
-            if wt_line.startswith('# Relative Mutability & Total Genes Evaluated ='):
+    find_wholegene_zscore = restriction not in ['interaction', 'domain', 'conservation', 'interdom',
+                                                'intercons', 'domcons', 'nowholegene']
+    header, gene_probability = None, None
+    weightfile_handle = gzip.open(weightfile) if weightfile.endswith('gz') else open(weightfile)
+    for wt_line in weightfile_handle:
+        if wt_line.startswith('#'):
+            if find_wholegene_zscore and wt_line.startswith('# Relative Mutability & Total Genes Evaluated ='):
                 gene_probability = float(wt_line.strip().split()[-2])
-                break
-        weightfile_handle.close()
+            continue
+        elif not header:
+            header = wt_line[:-1].split('\t')
+            break
 
-        if gene_probability:
-            wholegene_zscore = calculate_wholegene_zscore(gene_probability,
-                                                          current_mutational_value,
-                                                          total_mutation_count,
-                                                          total_mutational_value)
-            if wholegene_zscore > 0.:
-                final_zscores = ['WholeGene_NatVar|' + str(wholegene_zscore)]
+    if gene_probability:
+        wholegene_zscore = calculate_wholegene_zscore(gene_probability,
+                                                      current_mutational_value,
+                                                      total_mutation_count,
+                                                      total_mutational_value)
+        if wholegene_zscore > 0.:
+            final_zscores = ['WholeGene_NatVar|' + str(wholegene_zscore)]
 
     # (3) now process all other tracks:
     (expected, observed, covariance_matrix,
-     final_ids, positive_mutation_count, track_names) = get_observed_mu_covariance(mutation_indices,
-                                                                                   weightfile,
-                                                                                   restriction)
+     final_ids, positive_mutation_count,
+     track_names) = get_observed_mu_covariance(mutation_indices, weightfile_handle, header, aggregate_names,
+                                               restriction)
+    weightfile_handle.close()
+
     # no additional tracks to include/integrate:
     if len(final_ids) < 1:
         if len(final_zscores) > 0:
@@ -732,7 +731,7 @@ def mapping_gene_to_driver(annotate_drivers, driver_annotation_file):
         header = None
         for annot_line in annot_handle:
             if annot_line.startswith('##'):
-                cancer_header.append(annot_line)
+                cancer_header.append(annot_line.strip())
                 continue
             elif annot_line.startswith('#'):
                 continue
@@ -750,12 +749,15 @@ def mapping_gene_to_driver(annotate_drivers, driver_annotation_file):
 
 ####################################################################################################
 
-def reformat_results(input_files, concatenated_output_file, annotation_file, annotate_drivers=False,
-                     driver_annotation_file=None):
+def reformat_results(input_files, concatenated_output_file, maf_file, track_path, annotation_file,
+                     expression_file=None, annotate_drivers=False, driver_annotation_file=None):
     """
     :param input_files: set of all files containing genes, their cancer status, and their scores
     :param concatenated_output_file: single output file containing the combined output from the input files
+    :param maf_file: input maf file that was run on
+    :param track_path: full path to tracks used
     :param annotation_file: full path to tab delimited list of gene ID, primary gene names
+    :param expression_file: full path to expression file
     :param annotate_drivers: boolean indicating whether cancer driver status should be included in output
     :param driver_annotation_file: full path to a tab-delimited file with Ensembl gene ID, driver status
     :return: None
@@ -819,19 +821,26 @@ def reformat_results(input_files, concatenated_output_file, annotation_file, ann
     final_sorted_genes = sorted([(gene_vals['score'],
                                   gene_id,
                                   ';'.join([str(tn) + '|' + str(zs) for tn, zs in gene_vals['tracks'].items()]),
-                                  reformat_time(gene_vals['time']))
+                                  str(gene_vals['time']))
                                  for gene_id, gene_vals in gene_to_score.items()], reverse=True)
 
     # (8) finally write out results!
     gene_to_name = mapping_gene_to_name(annotation_file)  # Ensembl gene ID -> primary gene name
-    (gene_to_cancer,  # # Ensembl gene ID -> cancer driver status if desired
+    (gene_to_cancer,  # Ensembl gene ID -> cancer driver status if desired
      cancer_header) = mapping_gene_to_driver(annotate_drivers, driver_annotation_file)
 
     concat_outhandle = open(concatenated_output_file, 'w')
-    concat_outhandle.write('\n'.join(['# PertInInt (v0) results',
-                                      '# Time to run = ' + reformat_time(total_runtime)] + cancer_header +
-                                     ['\t'.join(['cancer_status', 'gene_name', 'score', 'runtime',
-                                                 'per_track_scores'])]) + '\n')
+    concat_outhandle.write('\n'.join(['# PertInInt, v0: https://github.com/Singh-Lab/PertInInt',
+                                      '# Kobren, S.N., Chazelle, B. and Singh, M. (2019) "An integrative approach to ' +
+                                      'identify preferentially altered interactions in human cancers." ' +
+                                      'Manuscript in preparation.',
+                                      '# Time to run = ' + reformat_time(total_runtime),
+                                      '# Input mutation file: '+maf_file] +
+                                     (['# Expression info: '+expression_file] if expression_file else []) +
+                                     ['# Track files found in: '+track_path] +
+                                     cancer_header +
+                                     ['\t'.join(['cancer_status', 'gene_name', 'score', 'runtime_in_seconds',
+                                                 'zscores_per_track'])]) + '\n')
 
     for gene_zscore, gene_id, track_zs, gene_runtime in final_sorted_genes:
         cancer_status = gene_to_cancer.get(gene_id, '')
@@ -1013,6 +1022,12 @@ if __name__ == "__main__":
                      ('' if not args.annotate_drivers else
                       '    > cancer driver annotations: ' + args.driver_annotation_file + '\n'))
     start = time.time()
-    reformat_results([args.out_file + '-tmp'], args.out_file, args.ensembl_annotation_file,
-                     args.annotate_drivers, args.driver_annotation_file if args.annotate_drivers else None)
+    reformat_results([args.out_file + '-tmp'],
+                     args.out_file,
+                     args.maf_file,
+                     args.track_path,
+                     args.ensembl_annotation_file,
+                     args.expression_file if args.limit_expression else None,
+                     args.annotate_drivers,
+                     args.driver_annotation_file if args.annotate_drivers else None)
     sys.stderr.write('    ! finished in '+reformat_time(time.time()-start)+'\n')

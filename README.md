@@ -44,12 +44,13 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
 * To run PertInInt: 
 
   ```bash
+  if [ ! -d output ]; then mkdir output; fi
   python PertInInt.py --track_path track_weights/
+                      --ensembl_annotation_file GRCh38_ensembl_gene_list.tsv.gz
                       --maf_file mafs/TCGA.Aggregate.muse.aggregated.somatic.maf
                       --out_file output/TCGA.Aggregate.muse.aggregated.somatic-PertInInt_output.tsv
                       --expression_file TCGA_GRCh38_expressed-genes_TPM.tsv.gz
-                      --driver_annotation_file GRCh38_driver_gene_list.tsv.gz
-                      --ensembl_annotation_file GRCh38_ensembl_gene_list.tsv.gz
+                      --driver_annotation_file GRCh38_driver_gene_list.tsv.gz                      
   ```
 
 * PertInInt automatically includes all four track types presented in the original publication of our paper. You can choose to run PertInInt on a subset of track types by specifying one of the following options using the `--restriction` argument:
@@ -80,7 +81,3 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
   python highlight_mechanism.py --pertinint_results output/TCGA.Aggregate.muse.aggregated.somatic-PertInInt_output.tsv
                                 --out_file output/TCGA.Aggregate.muse.aggregated.somatic-PertInInt_mechanisms-output.tsv
   ```
-
-### 5: Source code for customizing PertInInt tracks
-
-Our analytical method can easily be extended to include other track types. The full source code as well as instructions for preprocessing tracks and precomputing the expectation, variance, and covariances needed to compute *Z*-scores can be found on the [PertInInt "internal" wiki](https://github.com/Singh-Lab/PertInInt-internal/wiki). 

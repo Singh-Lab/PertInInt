@@ -60,14 +60,24 @@ def track_weights_list(trackweight_path):
     protid_to_geneid = {}  # set of modelable Ensembl gene IDs
     suffix = '.trackweights.tsv'  # properly formatted track weight files will end with this suffix
 
-    for chrom_id in [d for d in os.listdir(trackweight_path) if os.path.isdir(trackweight_path+d)]:
-        for gene_id in [d for d in os.listdir(trackweight_path+chrom_id)
-                        if os.path.isdir(trackweight_path+chrom_id+'/'+d)]:
-            for track_file in [d for d in os.listdir(trackweight_path+chrom_id+'/'+gene_id) if d.endswith(suffix)]:
+    if os.path.isfile(trackweight_path+'manifest.log'):
+        with open(trackweight_path+'manifest.log') as manifest:
+            for track_file in manifest:
+                gene_id = track_file.split('/')[1]
+                prot_id = track_file.strip().split('/')[-1][:-1*len(suffix)]
 
-                prot_id = track_file[:track_file.find(suffix)]
-                protid_to_track[prot_id] = trackweight_path + chrom_id + '/' + gene_id + '/' + track_file
+                protid_to_track[prot_id] = trackweight_path + track_file.strip()
                 protid_to_geneid[prot_id] = gene_id
+
+    else:
+        for chrom_id in [d for d in os.listdir(trackweight_path) if os.path.isdir(trackweight_path+d)]:
+            for gene_id in [d for d in os.listdir(trackweight_path+chrom_id)
+                            if os.path.isdir(trackweight_path+chrom_id+'/'+d)]:
+                for track_file in [d for d in os.listdir(trackweight_path+chrom_id+'/'+gene_id) if d.endswith(suffix)]:
+
+                    prot_id = track_file[:track_file.find(suffix)]
+                    protid_to_track[prot_id] = trackweight_path + chrom_id + '/' + gene_id + '/' + track_file
+                    protid_to_geneid[prot_id] = gene_id
 
     return protid_to_track, protid_to_geneid
 

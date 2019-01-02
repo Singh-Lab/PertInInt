@@ -23,64 +23,6 @@ from subprocess import call
 
 
 ####################################################################################################
-# CONSTANTS
-####################################################################################################
-
-common_false_positives = {
-    'ABCA1', 'ABCA12', 'ABCB1', 'ABCC9', 'ABCD2', 'ABCG2', 'ABLIM3', 'ACACA', 'ACAN', 'ACSM5',
-    'ACTN2', 'ADAM19', 'ADAM23', 'ADAMTS12', 'ADAMTS16', 'ADAMTS18', 'ADAMTS20', 'ADAMTS8',
-    'ADAMTSL1', 'ADAMTSL3', 'ADCY1', 'ADCY2', 'ADCY5', 'AGAP10', 'AKAP6', 'AMPH', 'ANK1',
-    'ANKRD11', 'ANKS1B', 'ANO3', 'ANTXR1', 'AOC3', 'ARAP2', 'ARAP3', 'ARFGEF1', 'ARHGAP5',
-    'ARMC3', 'ASH1L', 'ASTN2', 'ASXL3', 'ATP11C', 'ATP1A2', 'ATP8A2', 'ATP8B4', 'ATXN1', 'AUTS2',
-    'BAI3', 'BCHE', 'BCL11A', 'BCL11B', 'BCL9', 'BCLAF1', 'BICC1', 'BIRC6', 'BMPER', 'BNC2',
-    'BRINP1', 'BRINP3', 'BRWD3', 'BTBD11', 'BTK', 'BTRC', 'C1S', 'CACHD1', 'CACNA2D1', 'CACNA2D3',
-    'CACNB2', 'CADPS', 'CADPS2', 'CALCR', 'CAMTA1', 'CAPN6', 'CARD8', 'CASZ1', 'CCDC39', 'CDC27',
-    'CDC73', 'CDH11', 'CDH12', 'CDH2', 'CDH8', 'CEP170', 'CHD7', 'CHL1', 'CHRM3', 'CLCA2',
-    'CLIP1', 'CLSTN2', 'CNTN1', 'CNTN3', 'CNTNAP2', 'CNTNAP3B', 'COL12A1', 'COL14A1', 'COL1A2',
-    'COL21A1', 'COL25A1', 'COL4A5', 'COLGALT2', 'CPED1', 'CPNE4', 'CPS1', 'CPXM2', 'CR2', 'CSMD1',
-    'CSMD2', 'CTCFL', 'CTNNA2', 'CTNND2', 'CUBN', 'CYP26B1', 'DCC', 'DCLK1', 'DDR2', 'DDX26B',
-    'DGKI', 'DLG2', 'DLGAP3', 'DNAH11', 'DNAH3', 'DNAH5', 'DNAH7', 'DNAH8', 'DOCK2', 'DOCK4',
-    'DPP10', 'DPP6', 'DPYS', 'DSCAML1', 'DTNA', 'DTX1', 'DYNC1I1', 'DYNC2H1', 'DYSF', 'DZIP3',
-    'EBF1', 'EBF3', 'EGFLAM', 'ELMO1', 'EP400', 'EPHA5', 'EPHA6', 'EPHA7', 'EPHB1', 'ESRRG',
-    'EXOC2', 'EXOC4', 'EYA1', 'EYA4', 'F13A1', 'FAM46A', 'FAM83B', 'FANCD2', 'FAT2', 'FBN2',
-    'FBXL7', 'FGGY', 'FHOD3', 'FIGN', 'FLG', 'FLNC', 'FLT1', 'FMN2', 'FMO1', 'FOLH1', 'FOXC2',
-    'FOXP2', 'FOXQ1', 'FREM2', 'FYB', 'FZD10', 'FZD8', 'GLCCI1', 'GLDC', 'GLG1', 'GLI1', 'GLI2',
-    'GLI3', 'GPC6', 'GPR125', 'GPR158', 'GPRASP2', 'GRIA3', 'GRID1', 'GRIK2', 'GRIK3', 'GRIK4',
-    'GRIK5', 'GRIN2A', 'GRIN3A', 'GRM5', 'GRM6', 'GRM8', 'GUCY1A2', 'HAS2', 'HCN1', 'HDX',
-    'HECTD2', 'HECTD4', 'HERC2', 'HHIPL2', 'HMCN1', 'HNF1A', 'HRNR', 'HSPA1L', 'HSPA6', 'IGSF9B',
-    'IKZF1', 'IL32', 'IL7R', 'INPP4B', 'INPP5D', 'IQGAP2', 'ITGA10', 'ITGA4', 'ITGA8', 'ITGAV',
-    'ITIH5', 'ITPR2', 'ITSN1', 'KCND2', 'KCNG1', 'KCNH4', 'KCNT2', 'KIAA1109', 'KIAA1211',
-    'KIAA1324L', 'KIAA2022', 'KIF21B', 'KIF4B', 'KIF5A', 'KIRREL', 'KLHL4', 'KLHL5', 'LAMA2',
-    'LAMA4', 'LAMB1', 'LGI2', 'LGR5', 'LINGO1', 'LPHN2', 'LPHN3', 'LRFN5', 'LRP12', 'LRP2',
-    'LRP4', 'LRP6', 'LRRC4B', 'LRRIQ1', 'MADD', 'MAGI2', 'MAP1B', 'MARK1', 'MED12L', 'MEF2A',
-    'MEGF10', 'MGAM', 'MGAT3', 'MGAT5B', 'MLH1', 'MLLT10', 'MME', 'MMP16', 'MMP2', 'MUC16',
-    'MUC6', 'MXRA5', 'MYB', 'MYCBP2', 'MYH3', 'MYO3B', 'MYOM2', 'NAALAD2', 'NALCN', 'NBAS',
-    'NBEA', 'NCAM1', 'NCAM2', 'NCKAP5', 'NCOR2', 'NEB', 'NELL2', 'NLGN1', 'NLRP3', 'NOTCH2',
-    'NOVA1', 'NPAS3', 'NPR3', 'NR4A2', 'NRCAM', 'NRG3', 'NRK', 'NRXN1', 'NRXN3', 'NTNG1', 'NTRK2',
-    'NYAP2', 'OCA2', 'OGDHL', 'OGT', 'OPHN1', 'OTOF', 'OTOGL', 'OTUD7A', 'OVGP1', 'PABPC3',
-    'PAIP1', 'PAK3', 'PAMR1', 'PAPPA', 'PARD3B', 'PCDH10', 'PCDH11X', 'PCDH17', 'PCDH18',
-    'PCDH19', 'PCDH7', 'PCDH9', 'PCDHB16', 'PCDHB17', 'PCDHB8', 'PCDHGA2', 'PCDHGA3', 'PCDHGA6',
-    'PCLO', 'PCMTD1', 'PCNX', 'PCSK2', 'PCSK5', 'PDE10A', 'PDE11A', 'PDE1A', 'PDE1C', 'PDE3A',
-    'PDZD2', 'PDZRN4', 'PEG3', 'PHACTR4', 'PHEX', 'PIAS3', 'PIK3C2B', 'PKHD1L1', 'PLA2G4A',
-    'PLCB1', 'PLCB4', 'PLEC', 'PLEKHA7', 'PLXNA4', 'PODXL', 'POLR3B', 'POSTN', 'POT1', 'POTEE',
-    'POTEF', 'PPARGC1A', 'PPFIA2', 'PPP1R10', 'PPP1R16B', 'PPP1R9A', 'PPP3CA', 'PREX1', 'PREX2',
-    'PRKD1', 'PRKG1', 'PROS1', 'PROX1', 'PTCHD2', 'PTCHD4', 'PTPRB', 'PTPRC', 'PTPRZ1', 'PXDN',
-    'RAG1', 'RALGAPB', 'RALY', 'RANBP6', 'RARG', 'RASAL2', 'RGPD3', 'RGPD4', 'RIMBP2', 'RIMS1',
-    'RIMS2', 'ROBO1', 'ROBO2', 'ROR2', 'RUNX1T1', 'RYR2', 'RYR3', 'SACS', 'SALL2', 'SATB2',
-    'SCN1A', 'SCN2A', 'SCN5A', 'SCN9A', 'SEC24C', 'SEMA3A', 'SEMA3D', 'SEMA5A', 'SEMA6A',
-    'SEMA6D', 'SFMBT2', 'SIPA1L1', 'SIRPA', 'SKIDA1', 'SLC12A5', 'SLC26A7', 'SLC44A5', 'SLC4A10',
-    'SLC4A4', 'SLC8A1', 'SLC8A3', 'SLC9A2', 'SLCO5A1', 'SLIT3', 'SLITRK6', 'SPEF2', 'SPEG',
-    'SPEN', 'SPTA1', 'SRCAP', 'SRGAP3', 'SSH2', 'ST18', 'ST6GAL2', 'STK19', 'SULF1', 'SUPT16H',
-    'SVEP1', 'SYNE1', 'TAF1L', 'TAF3', 'TARS', 'TARS2', 'TBC1D22A', 'TBX5', 'TCF20', 'TCF4',
-    'TECTA', 'TENM1', 'TG', 'THBS2', 'THOC2', 'THSD7A', 'THSD7B', 'TMEM132B', 'TMTC2', 'TOX2',
-    'TP63', 'TRIO', 'TRPA1', 'TRPC4', 'TRPC6', 'TRPM8', 'TRPS1', 'TRRAP', 'TXNIP', 'UBC', 'UBE3A',
-    'UHRF1BP1', 'UHRF1BP1L', 'UNC45B', 'USH2A', 'VANGL2', 'VAV3', 'VPS13D', 'VPS52', 'WAC',
-    'WBSCR17', 'WDFY3', 'WDR70', 'WSCD2', 'ZBTB20', 'ZC3H12B', 'ZEB2', 'ZFHX4', 'ZFPM2', 'ZNF148',
-    'ZNF292', 'ZNF423', 'ZNF521', 'ZNF536', 'ZNF626', 'ZNF706', 'ZNF800', 'ZNF831', 'ZNF91'
-}
-
-
-####################################################################################################
 # BINDING ANNOTATION MAPPINGS
 ####################################################################################################
 

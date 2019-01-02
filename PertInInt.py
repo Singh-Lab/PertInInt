@@ -1014,10 +1014,10 @@ if __name__ == "__main__":
     start = time.time()
     reformat_results(per_protein_results,
                      args.out_file,
-                     args.maf_file,
-                     args.track_path,
-                     args.ensembl_annotation_file,
-                     args.expression_file if args.limit_expression else None,
+                     args.maf_file,  # just to add to header
+                     args.track_path,  # just to add to header
+                     args.ensembl_annotation_file,  # just to add to header
+                     args.expression_file if args.limit_expression else None,  # just to add to header
                      args.annotate_drivers,
                      args.driver_annotation_file if args.annotate_drivers else None)
     sys.stderr.write('    ! finished in '+reformat_time(time.time()-start)+'\n')

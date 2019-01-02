@@ -275,7 +275,7 @@ def parse_ordered_genes(results_file, output_file, pfam2go='pfam2go.txt', ligand
             zscores[tclass] = zscore
 
         out_handle.write('\t'.join([cancer_status, gene_name] +
-                                   [zscores.get(tclass, '--') for tclass in mechanism_types])+'\n')
+                                   [str(zscores.get(tclass, '--')) for tclass in mechanism_types])+'\n')
     in_handle.close()
     out_handle.close()
 

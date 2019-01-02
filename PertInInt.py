@@ -178,17 +178,16 @@ def check_restrictions(track_name, restriction='none', aggregate_names=None):
 
 ####################################################################################################
 
-def aggregate_domain_tracks(weightfile, repeat_domain_limit=40):
+def aggregate_domain_tracks(file_contents, repeat_domain_limit=40):
     """
-    :param weightfile: full path to a weight vector file
+    :param file_contents: full contents of a weight vector file
     :param repeat_domain_limit: minimum number of times a domain must be repeated to replace ALL
                                 individual instances with the aggregate track only
     :return: set of domains that we found more than X times
     """
 
     domain_tracks = []
-    weightfile_handle = gzip.open(weightfile) if weightfile.endswith('gz') else open(weightfile)
-    for wline in weightfile_handle:
+    for wline in file_contents:
         if wline.startswith('#'):
             continue
 
@@ -197,7 +196,6 @@ def aggregate_domain_tracks(weightfile, repeat_domain_limit=40):
                               if bd_track.startswith('PF') and
                               bd_track.endswith(':complete') and
                               not bd_track.endswith(':aggregate:complete')])  # e.g., PF00096_zf-C2H2:1-23:complete
-    weightfile_handle.close()
 
     return [dname for dname in set(domain_tracks) if domain_tracks.count(dname) >= repeat_domain_limit]
 
@@ -359,11 +357,10 @@ def covariance_to_correlation(cov_matrix):
 
 ####################################################################################################
 
-def get_observed_mu_covariance(mutation_indices, weightfile_handle, header, aggregate_names, restriction='none'):
+def get_observed_mu_covariance(mutation_indices, file_contents, aggregate_names, restriction='none'):
     """
     :param mutation_indices: list of mutated indices in this protein
-    :param weightfile_handle: OPEN file handle containing all binding potential weight tracks for the given protein
-    :param header: list corresponding to header items (previously parsed)
+    :param file_contents: contents of a file containing all binding potential weight tracks for the given protein
     :param aggregate_names: set of domain identifiers where we should consider aggregate tracks only
     :param restriction: str indicating a particular subset of tracks to consider (e.g., interaction, conservation, dom)
     :return: the expected score for each track, the observed scores for each track, the complete covariance
@@ -379,8 +376,15 @@ def get_observed_mu_covariance(mutation_indices, weightfile_handle, header, aggr
     track_names = {}  # track_id -> track_name
 
     # process each line in the weightfile
-    for wline in weightfile_handle:
-        v = wline[:-1].split('\t')
+    header = None
+    for wline in file_contents:
+        if wline.startswith('#'):
+            continue
+        elif not header:
+            header = wline.split('\t')
+            continue
+
+        v = wline.split('\t')
         track_id = v[header.index('track_id')]
         track_name = v[header.index('track_name')]
         intervals_yi = v[header.index('0-index-enrichment-intervals')]
@@ -587,51 +591,40 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
     if not weightfile:
         return 0., ';'.join(final_zscores)
 
-    """
-    try:
-        weightfile_handle = gzip.open(weightfile) if weightfile.endswith('gz') else open(weightfile)
-        for _ in weightfile_handle:
-            continue
-        weightfile_handle.close()
-    except (IOError, StopIteration) as _:  # weightfile is corrupted
-        return 0., ';'.join(final_zscores)
-    """
+    weightfile_handle = gzip.open(weightfile) if weightfile.endswith('gz') else open(weightfile)
+    file_contents = [wline[:-1] for wline in weightfile_handle]
+    weightfile_handle.close()
 
     # (2) get list of domains that occur 40+ times in this protein (we will ONLY consider agg tracks in these cases)
     aggregate_names = None
     if restriction in ['none', 'interaction', 'nointeraction', 'domain', 'nodomain', 'noconservation', 'nowholegene',
                        'intercons', 'interdom', 'interwholegene', 'domcons', 'domwholegene']:
-        aggregate_names = aggregate_domain_tracks(weightfile)
+        aggregate_names = aggregate_domain_tracks(file_contents)
 
     # (3) start with the whole gene Z-score if specified
     wholegene_zscore = 0.
-    find_wholegene_zscore = restriction not in ['interaction', 'domain', 'conservation', 'interdom',
-                                                'intercons', 'domcons', 'nowholegene']
-    header, gene_probability = None, None
-    weightfile_handle = gzip.open(weightfile) if weightfile.endswith('gz') else open(weightfile)
-    for wt_line in weightfile_handle:
-        if wt_line.startswith('#'):
-            if find_wholegene_zscore and wt_line.startswith('# Relative Mutability & Total Genes Evaluated ='):
-                gene_probability = float(wt_line.strip().split()[-2])
-            continue
-        elif not header:
-            header = wt_line[:-1].split('\t')
+    if restriction not in ['interaction', 'domain', 'conservation', 'interdom', 'intercons', 'domcons', 'nowholegene']:
+        gene_probability = None
+        for wline in file_contents:
+            if wline.startswith('#'):
+                if wline.startswith('# Relative Mutability & Total Genes Evaluated ='):
+                    gene_probability = float(wline.strip().split()[-2])
+                    break
+                continue
             break
 
-    if gene_probability:
-        wholegene_zscore = calculate_wholegene_zscore(gene_probability,
-                                                      current_mutational_value,
-                                                      total_mutation_count,
-                                                      total_mutational_value)
-        if wholegene_zscore > 0.:
-            final_zscores = ['WholeGene_NatVar|' + str(wholegene_zscore)]
+        if gene_probability:
+            wholegene_zscore = calculate_wholegene_zscore(gene_probability,
+                                                          current_mutational_value,
+                                                          total_mutation_count,
+                                                          total_mutational_value)
+            if wholegene_zscore > 0.:
+                final_zscores = ['WholeGene_NatVar|' + str(wholegene_zscore)]
 
     # (3) now process all other tracks:
     (expected, observed, covariance_matrix,
      final_ids, positive_mutation_count,
-     track_names) = get_observed_mu_covariance(mutation_indices, weightfile_handle, header, aggregate_names,
-                                               restriction)
-    weightfile_handle.close()
+     track_names) = get_observed_mu_covariance(mutation_indices, file_contents, aggregate_names, restriction)
 
     # no additional tracks to include/integrate:
     if len(final_ids) < 1:
@@ -761,7 +754,7 @@ def mapping_gene_to_driver(annotate_drivers, driver_annotation_file):
 
 ####################################################################################################
 
-def reformat_results(input_files, concatenated_output_file, maf_file, track_path, annotation_file,
+def reformat_results(initial_results, concatenated_output_file, maf_file, track_path, annotation_file,
                      expression_file=None, annotate_drivers=False, driver_annotation_file=None):
     """
     :param input_files: set of all files containing genes, their cancer status, and their scores
@@ -778,53 +771,41 @@ def reformat_results(input_files, concatenated_output_file, maf_file, track_path
     # Get Ensembl gene ID -> (best isoform score, total time to run across all isoforms)
     gene_to_score = {}
     header = ['prot_id', 'gene_id', 'score', 'total_time', 'track_zscores']
-    for infile in input_files:
-        if not os.path.isfile(infile):
-            continue
+    for v in initial_results:
 
-        infile_handle = gzip.open(infile) if infile.endswith('gz') else open(infile)
-        for prot_line in infile_handle:
-            if '\t' not in prot_line:
-                continue
-            v = prot_line[:-1].split('\t')
+        # (1) get the gene name and the combined Z-score for this isoform
+        gene_id = v[header.index('gene_id')]
+        gene_zscore = v[header.index('score')]
 
-            # (1) get the gene name and the combined Z-score for this isoform
-            gene_id = v[header.index('gene_id')]
-            gene_zscore = float(v[header.index('score')])
+        # (2) keep track of the time it took to run this particular protein:
+        total_seconds = v[header.index('total_time')]
 
-            # (2) keep track of the time it took to run this particular protein:
-            total_seconds = 0.
-            if len(v) > header.index('total_time'):
-                total_seconds = float(v[header.index('total_time')])
+        # (3) and also which tracks had positive Z-scores:'
+        bd_tracks = v[header.index('track_zscores')].strip()
+        track_names = {tname.split('|')[0]: float(tname.split('|')[1]) for tname in bd_tracks.split(';')} \
+            if len(bd_tracks) > 0 else {}
 
-            # (3) and also which tracks had positive Z-scores:
-            track_names = {}
-            if len(v) > header.index('track_zscores') and len(v[header.index('track_zscores')].strip()) > 0:
-                bd_tracks = v[header.index('track_zscores')].strip()
-                track_names = {tname.split('|')[0]: float(tname.split('|')[1]) for tname in bd_tracks.split(';')}
+        # (4) include this gene if it hasn't yet been observed:
+        if gene_id not in gene_to_score:
+            gene_to_score[gene_id] = {'score': gene_zscore,
+                                      'time': total_seconds,
+                                      'tracks': track_names}
 
-            # (4) include this gene if it hasn't yet been observed:
-            if gene_id not in gene_to_score:
-                gene_to_score[gene_id] = {'score': gene_zscore,
-                                          'time': total_seconds,
-                                          'tracks': track_names}
+        # (5) update the total seconds, score, and track names otherwise
+        else:
+            # (5a) update the score (i.e., take the maximum)
+            gene_to_score[gene_id]['score'] = max(gene_to_score[gene_id]['score'], gene_zscore)
 
-            # (5) update the total seconds, score, and track names otherwise
-            else:
-                # (5a) update the score (i.e., take the maximum)
-                gene_to_score[gene_id]['score'] = max(gene_to_score[gene_id]['score'], gene_zscore)
+            # (5b) tack onto the total time
+            gene_to_score[gene_id]['time'] += total_seconds
 
-                # (5b) tack onto the total time
-                gene_to_score[gene_id]['time'] += total_seconds
-
-                # (5c) tack on the track names (and keep track of the maximum for corresponding tracks)
-                for bd_track, zscore in track_names.items():
-                    if bd_track not in gene_to_score[gene_id]['tracks']:
-                        gene_to_score[gene_id]['tracks'][bd_track] = zscore
-                    else:
-                        gene_to_score[gene_id]['tracks'][bd_track] = max(gene_to_score[gene_id]['tracks'][bd_track],
-                                                                         zscore)
-        infile_handle.close()
+            # (5c) tack on the track names (and keep track of the maximum for corresponding tracks)
+            for bd_track, zscore in track_names.items():
+                if bd_track not in gene_to_score[gene_id]['tracks']:
+                    gene_to_score[gene_id]['tracks'][bd_track] = zscore
+                else:
+                    gene_to_score[gene_id]['tracks'][bd_track] = max(gene_to_score[gene_id]['tracks'][bd_track],
+                                                                     zscore)
 
     # (6) get the total time to run ALL genes
     total_runtime = sum([gv['time'] for gv in gene_to_score.values()])
@@ -860,11 +841,6 @@ def reformat_results(input_files, concatenated_output_file, maf_file, track_path
         concat_outhandle.write(
             '\t'.join([cancer_status, gene_full_name, str(gene_zscore), gene_runtime, track_zs]) + '\n')
     concat_outhandle.close()
-
-    # (9) clean up the temporary (unformatted) output files
-    for infile in input_files:
-        if infile != concatenated_output_file:
-            call(['rm', infile])
 
 
 ####################################################################################################
@@ -1006,7 +982,7 @@ if __name__ == "__main__":
     sys.stderr.write('(3) Processing per-protein Z-scores for all mutated, modelable proteins...\n')
     start = time.time()
 
-    out_handle = open(args.out_file+'-tmp', 'w')
+    per_protein_results = []
     for mutated_protein, current_mutations in mut_locs.items():
 
         protein_start = time.time()  # start the clock to measure performance for this particular protein
@@ -1020,23 +996,23 @@ if __name__ == "__main__":
 
         protein_total_time = time.time() - protein_start  # end clock to calculate total elapsed time (in seconds)
 
-        # Write out these results:
-        out_handle.write('\t'.join(map(str, [mutated_protein,
-                                             prot_to_geneid.get(mutated_protein, ''),
-                                             score,
-                                             protein_total_time,
-                                             track_zscores])) + '\n')
-    out_handle.close()
+        # save these results:
+        per_protein_results.append((mutated_protein,
+                                    prot_to_geneid.get(mutated_protein, ''),
+                                    score,
+                                    protein_total_time,
+                                    track_zscores))
+
     sys.stderr.write('    ! finished in '+reformat_time(time.time()-start)+'\n')
 
     # ------------------------------------------------------------------------------------------------
     # (4) reformat per-protein results:
-    sys.stderr.write('(4) Reformatting intermediate output...\n' +
+    sys.stderr.write('(4) Reformatting PertInInt results...\n' +
                      '    > final output file: ' + args.out_file + '\n' +
                      ('' if not args.annotate_drivers else
                       '    > cancer driver annotations: ' + args.driver_annotation_file + '\n'))
     start = time.time()
-    reformat_results([args.out_file + '-tmp'],
+    reformat_results(per_protein_results,
                      args.out_file,
                      args.maf_file,
                      args.track_path,

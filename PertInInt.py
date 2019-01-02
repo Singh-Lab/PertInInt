@@ -63,8 +63,8 @@ def track_weights_list(trackweight_path):
     if os.path.isfile(trackweight_path+'manifest.log'):
         with open(trackweight_path+'manifest.log') as manifest:
             for track_file in manifest:
-                gene_id = track_file.split('/')[1]
-                prot_id = track_file.strip().split('/')[-1][:-1*len(suffix)]
+                _, gene_id, prot_id = track_file.strip().split('/')
+                prot_id = prot_id[:prot_id.rfind(suffix)]
 
                 protid_to_track[prot_id] = trackweight_path + track_file.strip()
                 protid_to_geneid[prot_id] = gene_id
@@ -363,6 +363,8 @@ def get_observed_mu_covariance(mutation_indices, weightfile_handle, header, aggr
     """
     :param mutation_indices: list of mutated indices in this protein
     :param weightfile_handle: OPEN file handle containing all binding potential weight tracks for the given protein
+    :param header: list corresponding to header items (previously parsed)
+    :param aggregate_names: set of domain identifiers where we should consider aggregate tracks only
     :param restriction: str indicating a particular subset of tracks to consider (e.g., interaction, conservation, dom)
     :return: the expected score for each track, the observed scores for each track, the complete covariance
              matrix of all tracks with 1+ mutations, and the ordered list of track IDs that we have scores for
@@ -933,7 +935,8 @@ if __name__ == "__main__":
     if args.limit_expression and not os.path.isfile(args.expression_file):
         sys.stderr.write('* Could not open expression file: '+args.expression_file + '\n' +
                          '* Please obtain this file by running: \n' +
-                         '    > wget http://compbio.cs.princeton.edu/pertinint/TCGA_GRCh38_expressed-genes_TPM.tsv.gz\n' +
+                         '    > wget http://compbio.cs.princeton.edu/pertinint/' +
+                         'TCGA_GRCh38_expressed-genes_TPM.tsv.gz\n' +
                          '* Usage (option #1): python ' + sys.argv[0] + ' --maf_file <input_file> ' +
                          '--out_file <output_file> --expression_file <expression_file>\n' +
                          '* Usage (option #2): python ' + sys.argv[0] + ' --maf_file <input_file> ' +
@@ -943,7 +946,8 @@ if __name__ == "__main__":
     if args.annotate_drivers and not os.path.isfile(args.driver_annotation_file):
         sys.stderr.write('* Could not open driver annotation file: ' + args.driver_annotation_file + '\n' +
                          '* Please obtain this file by running: \n' +
-                         '    > wget https://github.com/Singh-Lab/PertInInt/raw/master/GRCh38_driver_gene_list.tsv.gz\n' +
+                         '    > wget https://github.com/Singh-Lab/PertInInt/raw/master/' +
+                         'GRCh38_driver_gene_list.tsv.gz\n' +
                          '* Usage (option #1): python ' + sys.argv[0] + ' --maf_file <input_file> ' +
                          '--out_file <output_file> --driver_annotation_file <annotation_file>\n' +
                          '* Usage (option #2): python ' + sys.argv[0] + ' --maf_file <input_file> ' +

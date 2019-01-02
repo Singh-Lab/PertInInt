@@ -8,7 +8,7 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
 
 ### 1: Downloading (required) preliminary data
 
-* **Precomputed Tracks.** PertInInt models different functional regions of a protein as "tracks". These tracks can represent interaction interfaces, functional protein domains and conserved protein positions. To download the set of precomputed tracks used by PertInInt (which will be unzipped into a directory called `track_weights/`), run the following: 
+* **Precomputed Tracks.** PertInInt models different functional regions of a protein as "tracks". These tracks can represent interaction interfaces, functional protein domains and conserved protein positions. To download the set of precomputed tracks used by PertInInt (filesize = 844MB) which will be unzipped into a directory called `track_weights/`, run the following: 
 
   ```bash
   PERTININT_TRACKS=PertInInt-tracks_v0.tar.gz
@@ -20,7 +20,7 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
 
 ### 2: Downloading (optional) preliminary data  
 
-* **Somatic Mutations.** PertInInt runs on any input .maf file. We tested PertInInt using a .maf file containing somatic mutations from all 33 TCGA cancer types, obtained from [NCI's Genomic Data Commons](https://gdc.cancer.gov) on December 6, 2018. To download this aggregated .maf file to test on, run the following: 
+* **Somatic Mutations.** PertInInt runs on any input .maf file. We tested PertInInt using a .maf file containing somatic mutations from all 33 TCGA cancer types, obtained from [NCI's Genomic Data Commons](https://gdc.cancer.gov) on December 6, 2018. To download this aggregated .maf file (filesize = 598MB) to test on, run the following: 
 
   ```bash
   if [ ! -d mafs ]; then mkdir mafs; fi
@@ -29,7 +29,7 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
   gzip -d mafs/$AGGREGATE_CANCER
   ```
 
-* **Expression Data.** We find that PertInInt's performance improves when limiting to those somatic mutations that fall into proteins that are expressed at TPM (transcripts per million) > 0.1. To download the list of genes and corresponding TCGA sample identifiers (across all 33 cancer types) with that gene expressed at TPM > 0.1, run the following: 
+* **Expression Data.** We find that PertInInt's performance improves when limiting to those somatic mutations that fall into proteins that are expressed at TPM (transcripts per million) > 0.1. To download the list of genes and corresponding TCGA sample identifiers across all 33 cancer type with that gene expressed at TPM > 0.1 (filesize = 475MB), run the following: 
 
   ```bash
   wget http://compbio.cs.princeton.edu/pertinint/TCGA_GRCh38_expressed-genes_TPM.tsv.gz

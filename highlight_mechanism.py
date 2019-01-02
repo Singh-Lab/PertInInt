@@ -176,7 +176,6 @@ def parse_tracknames(track_names, map_ligands, pfam_to_binding):
     try:
         track_to_zscore = {tz.split('|')[0]: float(tz.split('|')[1]) for tz in track_names.split(';')}
     except IndexError:
-        print track_names
         return mech_scores
 
     for track_name, zscore in track_to_zscore.items():
@@ -262,9 +261,12 @@ def parse_ordered_genes(results_file, output_file, pfam2go='pfam2go.txt', ligand
             continue
 
         v = result[:-1].split('\t')
-        cancer_status = v[header.index('cancer_status')]
-        gene_name = v[header.index('gene_name')]
-        track_names = v[header.index('zscores_per_track')]
+        cancer_status = v[header.index('cancer_status')].strip()
+        gene_name = v[header.index('gene_name')].strip()
+        track_names = v[header.index('zscores_per_track')].strip()
+
+        if len(track_names) < 1:
+            continue
 
         track_types = parse_tracknames(track_names, map_ligands, pfam_to_binding)
 
@@ -323,4 +325,4 @@ if __name__ == "__main__":
                         args.out_file,
                         args.pfam2go_file,
                         args.ligand_groups_file)
-    sys.stderr.write('Wrote tab-delimited mechanisms to: '+str(args.out_file).strip()+'\n')
+    sys.stderr.write('Wrote tab-delimited mechanisms to: '+args.out_file+'\n')

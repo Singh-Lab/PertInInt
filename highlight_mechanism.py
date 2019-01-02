@@ -323,4 +323,4 @@ if __name__ == "__main__":
                         args.out_file,
                         args.pfam2go_file,
                         args.ligand_groups_file)
-    sys.stderr.write('Wrote tab-delimited mechanisms to: '+args.out_file+'\n')
+    sys.stderr.write('Wrote tab-delimited mechanisms to: '+str(args.out_file).strip()+'\n')

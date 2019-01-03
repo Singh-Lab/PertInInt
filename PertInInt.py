@@ -287,6 +287,10 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
         sample_id = '-'.join(v[header.index('tumor_sample_barcode')].split('-')[:4])
         mut_val = float(v[header.index('t_alt_count')]) / float(v[header.index('t_depth')])
 
+        if not ensembl_ids:
+            print 'No Ensembl ID for: '+gene_name
+            continue
+
         # make sure that this mutation occurred within a protein:
         try:
             aachange = mutline[:-1].split('\t')[header.index('hgvsp_short')][2:]  # e.g., p.L414L
@@ -297,8 +301,8 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
         # make sure this mutation is occurring in a gene that is expressed
 
         if expression_by_gene:
-            sample_ids = [samp_id for sublist in [expression_by_gene.get(ensg_id, []) for ensg_id in ensembl_ids]
-                          for samp_id in sublist]
+            sample_ids = set([samp_id for sublist in [expression_by_gene.get(ensg_id, []) for ensg_id in ensembl_ids]
+                          for samp_id in sublist])
             if sample_id not in sample_ids:
                 continue
 

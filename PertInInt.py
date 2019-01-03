@@ -585,6 +585,13 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
     :return: a combined Z-score
     """
 
+    if '10/ENSG00000171862/ENSP00000361021' in weightfile:
+        print weightfile
+        print current_mutational_value
+        print total_mutational_value
+        print total_mutation_count
+        print restriction
+
     final_zscores = []  # record the track names and Z-scores for eventual mechanism interpretation
 
     # (1) try to read from weightfile:
@@ -609,6 +616,8 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
             if wline.startswith('#'):
                 if wline.startswith('# Relative Mutability & Total Genes Evaluated ='):
                     gene_probability = float(wline.strip().split()[-2])
+                    if '10/ENSG00000171862/ENSP00000361021' in weightfile:
+                        print gene_probability
                     break
                 continue
             break
@@ -618,8 +627,11 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
                                                           current_mutational_value,
                                                           total_mutation_count,
                                                           total_mutational_value)
+            if '10/ENSG00000171862/ENSP00000361021' in weightfile:
+                print wholegene_zscore
+
             if wholegene_zscore > 0.:
-                final_zscores = ['WholeGene_NatVar|' + str(wholegene_zscore)]
+                final_zscores.append('WholeGene_NatVar|' + str(wholegene_zscore))
 
     # (3) now process all other tracks:
     (expected, observed, covariance_matrix,

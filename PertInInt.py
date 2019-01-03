@@ -211,7 +211,7 @@ def gene_name_mapping(mapping_file):
     :return: dictionary of gene name -> ensembl gene ID
     """
 
-    name_mapping = {}  # gene name -> ensembl gene ID
+    name_mapping = {}  # gene name -> set(ensembl gene IDs)
 
     mapping_handle = gzip.open(mapping_file) if mapping_file.endswith('gz') else open(mapping_file)
     for mapping_line in mapping_handle:
@@ -219,7 +219,9 @@ def gene_name_mapping(mapping_file):
             continue
         ensembl_id, _, alt_ids = mapping_line[:-1].split('\t')[:3]
         for alt_id in alt_ids.split(','):
-            name_mapping[alt_id] = ensembl_id
+            if alt_id not in name_mapping:
+                name_mapping[alt_id] = set()
+            name_mapping[alt_id].add(ensembl_id)
     mapping_handle.close()
 
     return name_mapping
@@ -255,7 +257,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
             expression_by_gene[gene_name] = set(exp_line.split('\t')[1].split(','))
         exp_handle.close()
 
-    # (2) get mapping from gene "name" -> ensembl gene ID
+    # (2) get mapping from gene "name" -> set(ensembl gene IDs)
     name_to_ensembl = gene_name_mapping(mapping_file)
 
     # ------------------------------------------------------------------------------------------------
@@ -280,7 +282,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
         v = mutline[:-1].split('\t')
         prot_id = v[header.index('ensp')]
         gene_name = v[header.index('hugo_symbol')]
-        ensembl_id = name_to_ensembl.get(gene_name, None)
+        ensembl_ids = name_to_ensembl.get(gene_name, None)
         mut_type = v[header.index('variant_classification')].replace('_Mutation', '')
         sample_id = '-'.join(v[header.index('tumor_sample_barcode')].split('-')[:4])
         mut_val = float(v[header.index('t_alt_count')]) / float(v[header.index('t_depth')])
@@ -293,11 +295,15 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
             continue
 
         # make sure this mutation is occurring in a gene that is expressed
-        if expression_by_gene and sample_id not in expression_by_gene.get(ensembl_id, []):
-            continue
+
+        if expression_by_gene:
+            sample_ids = [samp_id for sublist in [expression_by_gene.get(ensg_id, []) for ensg_id in ensembl_ids]
+                          for samp_id in sublist]
+            if sample_id not in sample_ids:
+                continue
 
         # keep track of all nonsynonymous mutations in modelable genes/proteins
-        if mut_type in ['Missense', 'Nonsense'] and ensembl_id in modelable_genes:
+        if mut_type in ['Missense', 'Nonsense'] and True in [ensg_id in modelable_genes for ensg_id in ensembl_ids]:
             total_mutations += 1
             total_mutational_value += mut_val
 

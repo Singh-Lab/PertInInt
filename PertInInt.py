@@ -287,8 +287,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
         sample_id = '-'.join(v[header.index('tumor_sample_barcode')].split('-')[:4])
         mut_val = float(v[header.index('t_alt_count')]) / float(v[header.index('t_depth')])
 
-        if not ensembl_ids:
-            print 'No Ensembl ID for: '+gene_name
+        if not ensembl_ids:  # pseudogene / otherwise non-protein-coding gene
             continue
 
         # make sure that this mutation occurred within a protein:
@@ -301,18 +300,22 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
         # make sure this mutation is occurring in a gene that is expressed
 
         if expression_by_gene:
-            sample_ids = set([samp_id for sublist in [expression_by_gene.get(ensg_id, []) for ensg_id in ensembl_ids]
-                          for samp_id in sublist])
-            if sample_id not in sample_ids:
+            for ensg_id in ensembl_ids:
+                if sample_id in expression_by_gene.get(ensg_id, []):
+                    break
+            else:
                 continue
 
         # keep track of all nonsynonymous mutations in modelable genes/proteins
-        if mut_type in ['Missense', 'Nonsense'] and True in [ensg_id in modelable_genes for ensg_id in ensembl_ids]:
-            total_mutations += 1
-            total_mutational_value += mut_val
+        if mut_type in ['Missense', 'Nonsense']:
+            for ensg_id in ensembl_ids:
+                if ensg_id in modelable_genes:
+                    total_mutations += 1
+                    total_mutational_value += mut_val
 
-            if prot_id in modelable_prots:
-                mutation_values[prot_id] += mut_val
+                    if prot_id in modelable_prots:
+                        mutation_values[prot_id] += mut_val
+                    break
 
         # keep track of all missense mutations in modelable proteins
         if mut_type in ['Missense'] and prot_id in modelable_prots:

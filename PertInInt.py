@@ -233,8 +233,8 @@ def gene_name_mapping(mapping_file):
     for mapping_line in mapping_handle:
         if mapping_line.startswith('#'):
             continue
-        ensembl_id, _, alt_ids = mapping_line[:-1].split('\t')[:3]
-        for alt_id in alt_ids.split(','):
+        ensembl_id, main_id, alt_ids = mapping_line[:-1].split('\t')[:3]
+        for alt_id in [main_id]:  # alt_ids.split(','):
             if alt_id not in name_mapping:
                 name_mapping[alt_id] = set()
             name_mapping[alt_id].add(ensembl_id)

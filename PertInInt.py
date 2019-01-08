@@ -1056,11 +1056,10 @@ if __name__ == "__main__":
     per_protein_results = []
     for mutated_protein, current_mutations in mut_locs.items():
 
-        sys.stderr.write(mutated_protein+'\n')
-        #signal.signal(signal.SIGALRM, handler)  # Register the signal function handler
-        #signal.alarm(args.timeout)  # Define a timeout for this function
+        signal.signal(signal.SIGALRM, handler)  # Register the signal function handler
+        signal.alarm(args.timeout)  # Define a timeout for this function
 
-        if True:  # try:
+        try:
             protein_start = time.time()  # start the clock to measure performance for this particular protein
 
             score, track_zscores = protein_ztransform(current_mutations,
@@ -1078,9 +1077,9 @@ if __name__ == "__main__":
                                         score,
                                         protein_total_time,
                                         track_zscores))
-            #signal.alarm(0)  # Cancel the alarm if we made it to this point
+            signal.alarm(0)  # Cancel the alarm if we made it to this point
 
-        else:  # except Exception, exc:
+        except Exception, exc:
             sys.stderr.write('    > skipped: ' + mutated_protein + '\n')
             continue
 

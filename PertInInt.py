@@ -249,6 +249,7 @@ def gene_name_mapping(mapping_file):
         if synonym not in name_mapping:
             name_mapping[synonym] = gene_list
 
+    print name_mapping.items()[:10]
     return name_mapping
 
 
@@ -308,6 +309,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
         gene_name = v[header.index('hugo_symbol')]
         ensembl_ids = name_to_ensembl.get(gene_name, None)
         if not ensembl_ids:
+            print 'wtf'
             continue
 
         # check if missense/nonsense mutation:

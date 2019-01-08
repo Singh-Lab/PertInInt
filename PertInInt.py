@@ -220,10 +220,11 @@ def aggregate_domain_tracks(file_contents, repeat_domain_limit=40):
 # PROCESS MUTATIONS
 ####################################################################################################
 
-def gene_name_mapping(mapping_file):
+def gene_name_mapping(mapping_file, modelable_ensembl_ids):
     """
     :param mapping_file: full path to a tab-delimited file with Ensembl gene ID in the first column and
                          a comma-delimited list of all gene names and synonyms in the third column
+    :param modelable_ensembl_ids: set of Ensembl IDs that we can actually produce scores for
     :return: dictionary of gene name -> set(ensembl gene IDs)
     """
 
@@ -241,18 +242,24 @@ def gene_name_mapping(mapping_file):
 
         ensembl_id, main_id, alt_ids = mapping_line[:-1].split('\t')[:3]
 
+        # skip ensembl genes that cannot be modeled
+        if ensembl_id not in modelable_ensembl_ids:
+            continue
+
+        # keep track of all synonyms
         for alt_id in alt_ids.split(','):
             if alt_id not in synonym_mapping:
                 synonym_mapping[alt_id] = set()
             synonym_mapping[alt_id].add(ensembl_id)
 
+        # keep track of the primary gene name for this Ensembl ID
         if main_id not in name_mapping:
             name_mapping[main_id] = set()
         name_mapping[main_id].add(ensembl_id)
 
     mapping_handle.close()
 
-    # for the synonyms:
+    # include those synonyms in the mapping *IF* they have not already been identified as a primary gene name
     for synonym, gene_list in synonym_mapping.items():
         if synonym not in name_mapping:
             name_mapping[synonym] = gene_list
@@ -291,7 +298,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
         exp_handle.close()
 
     # (2) get mapping from gene "name" -> set(ensembl gene IDs)
-    name_to_ensembl = gene_name_mapping(mapping_file)
+    name_to_ensembl = gene_name_mapping(mapping_file, modelable_genes)
 
     # ------------------------------------------------------------------------------------------------
     # (3) define empty variables (to return)

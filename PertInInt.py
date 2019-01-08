@@ -245,7 +245,7 @@ def gene_name_mapping(mapping_file):
     mapping_handle.close()
 
     # for the synonyms:
-    for synonym, gene_list in synonym_mapping.keys():
+    for synonym, gene_list in synonym_mapping.items():
         if synonym not in name_mapping:
             name_mapping[synonym] = gene_list
 

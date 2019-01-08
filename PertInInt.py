@@ -227,18 +227,27 @@ def gene_name_mapping(mapping_file):
     :return: dictionary of gene name -> set(ensembl gene IDs)
     """
 
-    name_mapping = {}  # gene name -> set(ensembl gene IDs)
+    name_mapping = {}  # primary gene name -> set(ensembl gene IDs)
+    synonym_mapping = {}  # any gene name -> set(ensembl gene IDs)
 
     mapping_handle = gzip.open(mapping_file) if mapping_file.endswith('gz') else open(mapping_file)
     for mapping_line in mapping_handle:
         if mapping_line.startswith('#'):
             continue
         ensembl_id, main_id, alt_ids = mapping_line[:-1].split('\t')[:3]
-        for alt_id in [main_id]:  # alt_ids.split(','):
-            if alt_id not in name_mapping:
-                name_mapping[alt_id] = set()
-            name_mapping[alt_id].add(ensembl_id)
+        for alt_id in alt_ids.split(','):
+            if alt_id not in synonym_mapping:
+                synonym_mapping[alt_id] = set()
+            synonym_mapping[alt_id].add(ensembl_id)
+        if main_id not in name_mapping:
+            name_mapping[main_id] = set()
+        name_mapping[main_id].add(ensembl_id)
     mapping_handle.close()
+
+    # for the synonyms:
+    for synonym, gene_list in synonym_mapping.keys():
+        if synonym not in name_mapping:
+            name_mapping[synonym] = gene_list
 
     return name_mapping
 

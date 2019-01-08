@@ -307,15 +307,18 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
 
         # check if pseudogene / non-protein-coding gene:
         gene_name = v[header.index('hugo_symbol')]
+        print gene_name
         ensembl_ids = name_to_ensembl.get(gene_name, None)
         if not ensembl_ids:
-            print 'wtf'
             continue
+        print 'made it here!'
 
         # check if missense/nonsense mutation:
         mut_type = v[header.index('variant_classification')].replace('_Mutation', '')
         if mut_type not in ['Missense', 'Nonsense']:
             continue
+
+        print 'right mut type..'
 
         # make sure this mutation is occurring in a gene that is expressed
         sample_id = '-'.join(v[header.index('tumor_sample_barcode')].split('-')[:4])
@@ -325,6 +328,8 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
                     break
             else:
                 continue
+
+        print 'def expressed...'
 
         prot_id = v[header.index('ensp')]
         mut_val = float(v[header.index('t_alt_count')]) / float(v[header.index('t_depth')])

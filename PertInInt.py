@@ -20,6 +20,7 @@ import sys
 import time
 import gzip
 import argparse
+import signal
 import numpy as np
 from math import sqrt
 from subprocess import call
@@ -44,6 +45,21 @@ def reformat_time(run_time):
     h, m = divmod(m, 60)
     d, h = divmod(h, 24)
     return ':'.join(map(lambda x: str(int(x)).zfill(2), [d, h, m, s]))
+
+
+####################################################################################################
+
+def handler(signum, frame, print_errors=False):
+    """
+    :param signum: signal number passed by signal.signal
+    :param frame: what to do when we reach this time
+    :param print_errors: boolean indicating whether to print the signum and frame (True) or not
+    :return: raise an exception
+    """
+    if print_errors:
+        print signum
+        print frame
+    raise Exception("Timed out")
 
 
 ####################################################################################################
@@ -903,6 +919,8 @@ if __name__ == "__main__":
                         choices={'none', 'interaction', 'nointeraction', 'domain', 'nodomain',
                                  'conservation', 'noconservation', 'wholegene', 'nowholegene',
                                  'intercons', 'interdom', 'interwholegene', 'domcons', 'domwholegene', 'conswholegene'})
+    parser.add_argument('--timeout', type=int, help='Maximum number of seconds to spend processing any one protein',
+                        default=60)
     args = parser.parse_args()
 
     # ------------------------------------------------------------------------------------------------
@@ -1014,23 +1032,32 @@ if __name__ == "__main__":
     per_protein_results = []
     for mutated_protein, current_mutations in mut_locs.items():
 
-        protein_start = time.time()  # start the clock to measure performance for this particular protein
+        signal.signal(signal.SIGALRM, handler)  # Register the signal function handler
+        signal.alarm(args.timeout)  # Define a timeout for this function
 
-        score, track_zscores = protein_ztransform(current_mutations,
-                                                  prot_to_trackfile.get(mutated_protein, None),
-                                                  mut_values.get(mutated_protein, 0.),
-                                                  total_mut_value,
-                                                  total_mut_count,
-                                                  args.restriction)
+        try:
+            protein_start = time.time()  # start the clock to measure performance for this particular protein
 
-        protein_total_time = time.time() - protein_start  # end clock to calculate total elapsed time (in seconds)
+            score, track_zscores = protein_ztransform(current_mutations,
+                                                      prot_to_trackfile.get(mutated_protein, None),
+                                                      mut_values.get(mutated_protein, 0.),
+                                                      total_mut_value,
+                                                      total_mut_count,
+                                                      args.restriction)
 
-        # save these results:
-        per_protein_results.append((mutated_protein,
-                                    prot_to_geneid.get(mutated_protein, ''),
-                                    score,
-                                    protein_total_time,
-                                    track_zscores))
+            protein_total_time = time.time() - protein_start  # end clock to calculate total elapsed time (in seconds)
+
+            # save these results:
+            per_protein_results.append((mutated_protein,
+                                        prot_to_geneid.get(mutated_protein, ''),
+                                        score,
+                                        protein_total_time,
+                                        track_zscores))
+            signal.alarm(0)  # Cancel the alarm if we made it to this point
+
+        except Exception, exc:
+            sys.stderr.write('    > skipped: ' + mutated_protein + '\n')
+            continue
 
     sys.stderr.write('    ! finished in '+reformat_time(time.time()-start)+'\n')
 

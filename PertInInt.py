@@ -208,7 +208,7 @@ def gene_name_mapping(mapping_file):
     """
     :param mapping_file: full path to a tab-delimited file with Ensembl gene ID in the first column and
                          a comma-delimited list of all gene names and synonyms in the third column
-    :return: dictionary of gene name -> ensembl gene ID
+    :return: dictionary of gene name -> set(ensembl gene IDs)
     """
 
     name_mapping = {}  # gene name -> set(ensembl gene IDs)
@@ -277,28 +277,21 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
         if not header:
             header = mutline.lower()[:-1].split('\t')
             continue
-
-        # get contents for this line:
         v = mutline[:-1].split('\t')
-        prot_id = v[header.index('ensp')]
+
+        # check if pseudogene / non-protein-coding gene:
         gene_name = v[header.index('hugo_symbol')]
         ensembl_ids = name_to_ensembl.get(gene_name, None)
-        mut_type = v[header.index('variant_classification')].replace('_Mutation', '')
-        sample_id = '-'.join(v[header.index('tumor_sample_barcode')].split('-')[:4])
-        mut_val = float(v[header.index('t_alt_count')]) / float(v[header.index('t_depth')])
-
-        if not ensembl_ids:  # pseudogene / otherwise non-protein-coding gene
+        if not ensembl_ids:
             continue
 
-        # make sure that this mutation occurred within a protein:
-        try:
-            aachange = mutline[:-1].split('\t')[header.index('hgvsp_short')][2:]  # e.g., p.L414L
-            mut_pos = int(''.join([i for i in list(aachange) if i in map(str, range(10))])) - 1
-        except ValueError:
+        # check if missense/nonsense mutation:
+        mut_type = v[header.index('variant_classification')].replace('_Mutation', '')
+        if mut_type not in ['Missense', 'Nonsense']:
             continue
 
         # make sure this mutation is occurring in a gene that is expressed
-
+        sample_id = '-'.join(v[header.index('tumor_sample_barcode')].split('-')[:4])
         if expression_by_gene:
             for ensg_id in ensembl_ids:
                 if sample_id in expression_by_gene.get(ensg_id, []):
@@ -306,19 +299,30 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
             else:
                 continue
 
-        # keep track of all nonsynonymous mutations in modelable genes/proteins
-        if mut_type in ['Missense', 'Nonsense']:
-            for ensg_id in ensembl_ids:
-                if ensg_id in modelable_genes:
-                    total_mutations += 1
-                    total_mutational_value += mut_val
+        prot_id = v[header.index('ensp')]
+        mut_val = float(v[header.index('t_alt_count')]) / float(v[header.index('t_depth')])
 
-                    if prot_id in modelable_prots:
-                        mutation_values[prot_id] += mut_val
-                    break
+        # keep track of all nonsynonymous mutation values and counts across modelable genes
+        for ensg_id in ensembl_ids:
+            if ensg_id in modelable_genes:
+                total_mutations += 1
+                total_mutational_value += mut_val
+                break
+
+        # keep track of nonsynonymous mutation values in modelable proteins
+        if prot_id in modelable_prots:
+            mutation_values[prot_id] += mut_val
 
         # keep track of all missense mutations in modelable proteins
         if mut_type in ['Missense'] and prot_id in modelable_prots:
+
+            # get mutation position (if possible):
+            try:
+                aachange = mutline[:-1].split('\t')[header.index('hgvsp_short')][2:]  # e.g., p.L414L
+                mut_pos = int(''.join([i for i in list(aachange) if i in map(str, range(10))])) - 1
+            except ValueError:
+                continue
+
             mutation_locations[prot_id].append((mut_pos, mut_val))
 
     return mutation_locations, mutation_values, total_mutational_value, total_mutations
@@ -782,7 +786,7 @@ def mapping_gene_to_driver(annotate_drivers, driver_annotation_file):
 def reformat_results(initial_results, concatenated_output_file, maf_file, track_path, annotation_file,
                      expression_file=None, annotate_drivers=False, driver_annotation_file=None):
     """
-    :param input_files: set of all files containing genes, their cancer status, and their scores
+    :param initial_results: set of all proteins, their gene names, combined z-scores, run times, and mutated tracks
     :param concatenated_output_file: single output file containing the combined output from the input files
     :param maf_file: input maf file that was run on
     :param track_path: full path to tracks used

@@ -231,17 +231,25 @@ def gene_name_mapping(mapping_file):
     synonym_mapping = {}  # any gene name -> set(ensembl gene IDs)
 
     mapping_handle = gzip.open(mapping_file) if mapping_file.endswith('gz') else open(mapping_file)
+    header = None
     for mapping_line in mapping_handle:
         if mapping_line.startswith('#'):
             continue
+        elif not header:
+            header = mapping_line[:-1].split('\t')
+            continue
+
         ensembl_id, main_id, alt_ids = mapping_line[:-1].split('\t')[:3]
+
         for alt_id in alt_ids.split(','):
             if alt_id not in synonym_mapping:
                 synonym_mapping[alt_id] = set()
             synonym_mapping[alt_id].add(ensembl_id)
+
         if main_id not in name_mapping:
             name_mapping[main_id] = set()
         name_mapping[main_id].add(ensembl_id)
+
     mapping_handle.close()
 
     # for the synonyms:
@@ -249,7 +257,6 @@ def gene_name_mapping(mapping_file):
         if synonym not in name_mapping:
             name_mapping[synonym] = gene_list
 
-    print name_mapping.items()[:10]
     return name_mapping
 
 
@@ -307,18 +314,14 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
 
         # check if pseudogene / non-protein-coding gene:
         gene_name = v[header.index('hugo_symbol')]
-        print gene_name
         ensembl_ids = name_to_ensembl.get(gene_name, None)
         if not ensembl_ids:
             continue
-        print 'made it here!'
 
         # check if missense/nonsense mutation:
         mut_type = v[header.index('variant_classification')].replace('_Mutation', '')
         if mut_type not in ['Missense', 'Nonsense']:
             continue
-
-        print 'right mut type..'
 
         # make sure this mutation is occurring in a gene that is expressed
         sample_id = '-'.join(v[header.index('tumor_sample_barcode')].split('-')[:4])
@@ -328,8 +331,6 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
                     break
             else:
                 continue
-
-        print 'def expressed...'
 
         prot_id = v[header.index('ensp')]
         mut_val = float(v[header.index('t_alt_count')]) / float(v[header.index('t_depth')])
@@ -769,9 +770,9 @@ def mapping_gene_to_name(annotation_file):
         elif not header:
             header = annot_line[:-1].split('\t')
             continue
-        gene_zscore = annot_line[:-1].split('\t')
-        gene_id = gene_zscore[header.index('ensembl_gene_id')]
-        gene_name = gene_zscore[header.index('primary_gene_names')]
+        v = annot_line[:-1].split('\t')
+        gene_id = v[header.index('ensembl_gene_id')]
+        gene_name = v[header.index('primary_gene_names')]
         gene_to_name[gene_id] = gene_name
     annot_handle.close()
 
@@ -1048,9 +1049,9 @@ if __name__ == "__main__":
     per_protein_results = []
     for mutated_protein, current_mutations in mut_locs.items():
 
-        print mutated_protein
-        signal.signal(signal.SIGALRM, handler)  # Register the signal function handler
-        signal.alarm(args.timeout)  # Define a timeout for this function
+        sys.stderr.write(mutated_protein+'\n')
+        #signal.signal(signal.SIGALRM, handler)  # Register the signal function handler
+        #signal.alarm(args.timeout)  # Define a timeout for this function
 
         if True:  # try:
             protein_start = time.time()  # start the clock to measure performance for this particular protein
@@ -1070,7 +1071,7 @@ if __name__ == "__main__":
                                         score,
                                         protein_total_time,
                                         track_zscores))
-            signal.alarm(0)  # Cancel the alarm if we made it to this point
+            #signal.alarm(0)  # Cancel the alarm if we made it to this point
 
         else:  # except Exception, exc:
             sys.stderr.write('    > skipped: ' + mutated_protein + '\n')

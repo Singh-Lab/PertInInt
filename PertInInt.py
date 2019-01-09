@@ -642,13 +642,6 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
     :return: a combined Z-score
     """
 
-    if '10/ENSG00000171862/ENSP00000361021' in weightfile:
-        print weightfile
-        print current_mutational_value
-        print total_mutational_value
-        print total_mutation_count
-        print restriction
-
     final_zscores = []  # record the track names and Z-scores for eventual mechanism interpretation
 
     # (1) try to read from weightfile:

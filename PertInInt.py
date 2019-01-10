@@ -66,9 +66,10 @@ def handler(signum, frame, print_errors=False):
 # FIND, FORMAT AND CHECK TRACKS
 ####################################################################################################
 
-def track_weights_list(trackweight_path):
+def track_weights_list(trackweight_path, limit_chromosomes=None):
     """
     :param trackweight_path: full path to directories containing weight vectors
+    :param limit_chromosomes: set of chromosomes to restrict to
     :return: protein ID -> full path to track weight file list
     """
 
@@ -79,14 +80,20 @@ def track_weights_list(trackweight_path):
     if os.path.isfile(trackweight_path+'manifest.log'):
         with open(trackweight_path+'manifest.log') as manifest:
             for track_file in manifest:
-                _, gene_id, prot_id = track_file.strip().split('/')
-                prot_id = prot_id[:prot_id.rfind(suffix)]
+                chrom_id, gene_id, file_name = track_file.strip().split('/')
 
+                if limit_chromosomes and chrom_id not in limit_chromosomes:
+                    continue
+
+                prot_id = file_name[:file_name.rfind(suffix)]
                 protid_to_track[prot_id] = trackweight_path + track_file.strip()
                 protid_to_geneid[prot_id] = gene_id
 
     else:
         for chrom_id in [d for d in os.listdir(trackweight_path) if os.path.isdir(trackweight_path+d)]:
+            if limit_chromosomes and chrom_id not in limit_chromosomes:
+                continue
+
             for gene_id in [d for d in os.listdir(trackweight_path+chrom_id)
                             if os.path.isdir(trackweight_path+chrom_id+'/'+d)]:
                 for track_file in [d for d in os.listdir(trackweight_path+chrom_id+'/'+gene_id) if d.endswith(suffix)]:
@@ -897,11 +904,17 @@ def reformat_results(initial_results, concatenated_output_file, maf_file, track_
                                      ['\t'.join(['cancer_status', 'gene_name', 'score', 'runtime_in_seconds',
                                                  'zscores_per_track'])]) + '\n')
 
+    seen_genes = set()
+
     for gene_zscore, gene_id, track_zs, gene_runtime in final_sorted_genes:
+        gene_symbol = gene_to_name.get(gene_id, '')
+        if gene_symbol in seen_genes:
+            continue
+        gene_full_name = gene_id + (',' if gene_symbol != '' else '') + gene_symbol
         cancer_status = gene_to_cancer.get(gene_id, '')
-        gene_full_name = gene_id + (',' if gene_id in gene_to_name else '') + gene_to_name.get(gene_id, '')
         concat_outhandle.write(
             '\t'.join([cancer_status, gene_full_name, str(gene_zscore), gene_runtime, track_zs]) + '\n')
+        seen_genes.add(gene_symbol)
     concat_outhandle.close()
 
 
@@ -1015,7 +1028,7 @@ if __name__ == "__main__":
     sys.stderr.write('(1) Getting paths to proteins that can be modeled...\n' +
                      '    > tracks directory: '+args.track_path+'\n')
     start = time.time()
-    prot_to_trackfile, prot_to_geneid = track_weights_list(args.track_path)
+    prot_to_trackfile, prot_to_geneid = track_weights_list(args.track_path, map(str, range(1, 23))+['X', 'Y'])
     sys.stderr.write('    ! finished in '+reformat_time(time.time()-start)+'\n')
 
     # ------------------------------------------------------------------------------------------------

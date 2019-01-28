@@ -195,10 +195,10 @@ def check_restrictions(track_name, restriction='none', aggregate_names=None):
     elif restriction in ['noconservation', 'interdom']:
         if track_classification == 'conservation':
             return False
-    elif restriction in ['none', 'nowholegene']:
-        return True
+    elif restriction in ['wholegene']:
+        return False
 
-    return False  # if we passed, or if our restriction is 'none' or 'nowholegene'
+    return True  # if we passed, or if our restriction is 'none' or 'nowholegene'
 
 
 ####################################################################################################

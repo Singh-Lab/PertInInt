@@ -195,8 +195,10 @@ def check_restrictions(track_name, restriction='none', aggregate_names=None):
     elif restriction in ['noconservation', 'interdom']:
         if track_classification == 'conservation':
             return False
+    elif restriction in ['none', 'nowholegene']:
+        return True
 
-    return True  # if we passed, or if our restriction is 'none' or 'nowholegene'
+    return False  # if we passed, or if our restriction is 'none' or 'nowholegene'
 
 
 ####################################################################################################
@@ -687,9 +689,13 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
                 final_zscores.append('WholeGene_NatVar|' + str(wholegene_zscore))
 
     # (3) now process all other tracks:
-    (expected, observed, covariance_matrix,
-     final_ids, positive_mutation_count,
-     track_names) = get_observed_mu_covariance(mutation_indices, file_contents, aggregate_names, restriction)
+    if restriction != 'wholegene':
+        (expected, observed, covariance_matrix,
+         final_ids, positive_mutation_count,
+         track_names) = get_observed_mu_covariance(mutation_indices, file_contents, aggregate_names, restriction)
+    else:
+        final_ids = []
+        expected, observed, covariance_matrix, positive_mutation_count, track_names = {}, {}, {}, {}, {}
 
     # no additional tracks to include/integrate:
     if len(final_ids) < 1:

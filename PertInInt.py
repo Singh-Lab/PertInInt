@@ -1067,7 +1067,7 @@ if __name__ == "__main__":
     sys.stderr.write('    ! finished in '+reformat_time(time.time()-start)+'\n')
 
     # restrict domains!
-    get_restricted_domains(0, args.struct_cutoff)
+    get_restricted_domains(args.struct_cutoff, 0)
 
     # ------------------------------------------------------------------------------------------------
     # (2) read in mutations for those genes that can modeled

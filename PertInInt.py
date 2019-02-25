@@ -53,7 +53,7 @@ def get_restricted_domains(minimum_instances, minimum_structures, stricter_insta
             skip_doms.add((problem_domain, problem_ligand))
 
     # remove DNA "mimicry" by RNA structures:
-    for rna_problem_domain in ['F00047_ig', 'PF00096_zf-C2H2']:
+    for rna_problem_domain in ['PF00047_ig', 'PF00096_zf-C2H2']:
         for rna in ['RNA_', 'RNABASE_', 'RNABACKBONE_']:
             skip_doms.add((rna_problem_domain, rna))
 

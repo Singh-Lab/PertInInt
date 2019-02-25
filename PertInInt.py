@@ -35,7 +35,7 @@ RESTRICTED_DOMS = None  # if there are particular (domain, ligand) pairs you are
 
 ####################################################################################################
 
-def get_restricted_domains(minimum_instances, minimum_structures,
+def get_restricted_domains(minimum_instances, minimum_structures, stricter_instance_cutoff,
                            id_file='/n/data1/hms/dbmi/zaklab/sk758/interacdome/InteracDome_v0.3-confident.tsv'):
     """
     :param minimum_instances: minimum number of instances that a (domain, ligand) pair must have to be considered
@@ -46,6 +46,23 @@ def get_restricted_domains(minimum_instances, minimum_structures,
 
     skip_doms = set()
 
+    # remove the common false positive repetitive domain/small molecule groupings:
+    for problem_domain in ['PF07686_V-set', 'PF00047_ig', 'PF07679_I-set', 'PF13927_Ig_3', 'PF13895_Ig_2',
+                           'PF08205_C2-set_2', 'PF07654_C1-set', 'PF00008_EGF']:
+        for problem_ligand in ['BMA', 'MAN', 'UNL', 'GAL', 'FUC']:
+            skip_doms.add((problem_domain, problem_ligand))
+
+    # remove DNA "mimicry" by RNA structures:
+    for rna_problem_domain in ['F00047_ig', 'PF00096_zf-C2H2']:
+        for rna in ['RNA_', 'RNABASE_', 'RNABACKBONE_']:
+            skip_doms.add((rna_problem_domain, rna))
+
+    # and remove RNA "mimicry" by DNA structures:
+    for dna_problem_domain in ['PF04851_ResIII']:
+        for dna in ['DNA_', 'DNABASE_', 'DNABACKBONE_']:
+            skip_doms.add((dna_problem_domain, dna))
+
+    # finally, remove domains that do not have the required number of instances/structures in the BioLiP
     with open(id_file) as id_handle:
         header = None
         for idline in id_handle:
@@ -56,8 +73,16 @@ def get_restricted_domains(minimum_instances, minimum_structures,
                 continue
             v = idline[:-1].split('\t')
 
+            # any ligand type that doesn't pass the bare minimum threshold will be skipped
             if int(v[header.index('num_nonidentical_instances')]) < minimum_instances or \
                int(v[header.index('num_structures')]) < minimum_structures:
+                skip_doms.add((v[header.index('pfam_id')], v[header.index('ligand_type')]))
+
+            # we require an even higher threshold for small molcules and specific ions:
+            if v[header.index('ligand_type')] not in {'DNA_', 'DNABASE_', 'DNABACKBONE',
+                                                      'RNA_', 'RNABASE_', 'RNABACKBONE_',
+                                                      'PEPTIDE_', 'ION_', 'SM_'} and \
+               int(v[header.index('num_nonidentical_instances')]) < stricter_instance_cutoff:
                 skip_doms.add((v[header.index('pfam_id')], v[header.index('ligand_type')]))
 
     global RESTRICTED_DOMS
@@ -966,7 +991,7 @@ if __name__ == "__main__":
     parser.add_argument('--track_path', type=str, help='Full path to directory containing track weight information',
                         default='track_weights/')
     parser.add_argument('--struct_cutoff', type=int, default=0,
-                        help='Minimum number of nonredundant instances/structures to include InteracDome track')
+                        help='Minimum number of nonredundant structural instances to include InteracDome track')
 
     parser.add_argument('--expression_file', type=str, default='TCGA_GRCh38_expressed-genes_TPM.tsv.gz',
                         help='Full path to a tab-delimited file containing lists of genes that are expressed in ' +
@@ -1067,7 +1092,7 @@ if __name__ == "__main__":
     sys.stderr.write('    ! finished in '+reformat_time(time.time()-start)+'\n')
 
     # restrict domains!
-    get_restricted_domains(args.struct_cutoff, 0)
+    get_restricted_domains(args.struct_cutoff, 0, args.struct_cutoff * 2)
 
     # ------------------------------------------------------------------------------------------------
     # (2) read in mutations for those genes that can modeled

@@ -990,7 +990,7 @@ if __name__ == "__main__":
                         help='Tab-delimited list of Ensembl gene identifiers and their primary gene names')
     parser.add_argument('--track_path', type=str, help='Full path to directory containing track weight information',
                         default='track_weights/')
-    parser.add_argument('--struct_cutoff', type=int, default=0,
+    parser.add_argument('--struct_cutoff', type=int, default=5,
                         help='Minimum number of nonredundant structural instances to include InteracDome track')
 
     parser.add_argument('--expression_file', type=str, default='TCGA_GRCh38_expressed-genes_TPM.tsv.gz',
@@ -1091,7 +1091,7 @@ if __name__ == "__main__":
     prot_to_trackfile, prot_to_geneid = track_weights_list(args.track_path, map(str, range(1, 23))+['X', 'Y'])
     sys.stderr.write('    ! finished in '+reformat_time(time.time()-start)+'\n')
 
-    # restrict domains!
+    # remove problematic domain-ligand pairs (optional)
     get_restricted_domains(args.struct_cutoff, 0, args.struct_cutoff * 2)
 
     # ------------------------------------------------------------------------------------------------

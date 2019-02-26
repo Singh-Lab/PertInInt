@@ -81,7 +81,7 @@ def get_restricted_domains(minimum_instances, minimum_structures, stricter_insta
             # we require an even higher threshold for small molcules and specific ions:
             if v[header.index('ligand_type')] not in {'DNA_', 'DNABASE_', 'DNABACKBONE',
                                                       'RNA_', 'RNABASE_', 'RNABACKBONE_',
-                                                      'PEPTIDE_', 'ION_', 'SM_'} and \
+                                                      'PEPTIDE_'} and \
                int(v[header.index('num_nonidentical_instances')]) < stricter_instance_cutoff:
                 skip_doms.add((v[header.index('pfam_id')], v[header.index('ligand_type')]))
 
@@ -1092,7 +1092,7 @@ if __name__ == "__main__":
     sys.stderr.write('    ! finished in '+reformat_time(time.time()-start)+'\n')
 
     # remove problematic domain-ligand pairs (optional)
-    get_restricted_domains(args.struct_cutoff, 0, args.struct_cutoff * 2)
+    get_restricted_domains(args.struct_cutoff, 0, args.struct_cutoff * 1.5)
 
     # ------------------------------------------------------------------------------------------------
     # (2) read in mutations for those genes that can modeled

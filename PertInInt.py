@@ -334,7 +334,8 @@ def gene_name_mapping(mapping_file, modelable_ensembl_ids):
 
 ####################################################################################################
 
-def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mapping_file, expression_file):
+def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mapping_file, expression_file,
+                               silent_mutations=False):
     """
     :param maf_file: full path to a .maf formatted file with somatic mutations
     :param modelable_genes: dictionary of Ensembl gene IDs -> modelable protein IDs
@@ -343,6 +344,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
                          a comma-delimited list of all gene names and synonyms in the third column
     :param expression_file: full path to a tab-delimited file containing Ensembl gene IDs and the set of tumor
                             samples in which that gene is expressed
+    :param silent_mutations: boolean indicating whether to limit to synonymous mutations (True) or not
     :return: (1) dictionary prot_id -> [(0-index position of missense mutation, mutational value), ...]
              (2) dictionary prot_id -> total nonsynonymous mutational burden (allelic fraction)
              (3) total nonsynonymous mutational burden across all genes
@@ -385,14 +387,19 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
         v = mutline[:-1].split('\t')
 
         # check if pseudogene / non-protein-coding gene:
-        gene_name = v[header.index('hugo_symbol')]
-        ensembl_ids = name_to_ensembl.get(gene_name, None)
+        gene_id = v[header.index('gene')]
+        if gene_id.startswith('ENSG'):
+            ensembl_ids = [gene_id]
+        else:
+            ensembl_ids = name_to_ensembl.get(v[header.index('hugo_symbol')], None)
         if not ensembl_ids:
             continue
 
         # check if missense/nonsense mutation:
         mut_type = v[header.index('variant_classification')].replace('_Mutation', '')
-        if mut_type not in ['Missense', 'Nonsense']:
+        if not silent_mutations and mut_type not in ['Missense', 'Nonsense']:
+            continue
+        if silent_mutations and mut_type not in ['Silent']:
             continue
 
         # make sure this mutation is occurring in a gene that is expressed
@@ -419,7 +426,8 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
             mutation_values[prot_id] += mut_val
 
         # keep track of all missense mutations in modelable proteins
-        if mut_type in ['Missense'] and prot_id in modelable_prots:
+        if ((not silent_mutations and mut_type in ['Missense']) or
+            (silent_mutations and mut_type in ['Silent'])) and prot_id in modelable_prots:
 
             # get mutation position (if possible):
             try:
@@ -1011,6 +1019,8 @@ if __name__ == "__main__":
                                  'intercons', 'interdom', 'interwholegene', 'domcons', 'domwholegene', 'conswholegene'})
     parser.add_argument('--timeout', type=int, help='Maximum number of seconds to spend processing any one protein',
                         default=60)
+    parser.add_argument('--silent', dest='silent_mutations', action='store_true', default=False,
+                        help='Run PertInInt on silent mutations only?')
     args = parser.parse_args()
 
     # ------------------------------------------------------------------------------------------------
@@ -1102,7 +1112,9 @@ if __name__ == "__main__":
                      '    > input maf file: ' + args.maf_file + '\n' +
                      '    > gene name mapping file: ' + args.ensembl_annotation_file + '\n' +
                      ('' if not args.limit_expression else
-                      '    > expressed genes list: ' + args.expression_file + '\n'))
+                      '    > expressed genes list: ' + args.expression_file + '\n') +
+                     ('' if not args.silent_mutations else
+                      '    > limiting to synonymous mutations\n'))
     start = time.time()
 
     (mut_locs,  # prot_id -> [(0-index position of missense mutation, mutational value), ...]
@@ -1113,7 +1125,8 @@ if __name__ == "__main__":
         set(prot_to_geneid.values()),  # set of Ensembl gene IDs with 1+ modelable proteins
         set(prot_to_trackfile.keys()),  # set of Ensembl protein IDs that can be modeled
         args.ensembl_annotation_file if args.limit_expression else None,
-        args.expression_file if args.limit_expression else None  # path to expression file
+        args.expression_file if args.limit_expression else None,  # path to expression file
+        args.silent_mutations  # whether to limit to synonymous mutations (True) or not (default)
     )
     sys.stderr.write('    ! finished in '+reformat_time(time.time()-start)+'\n')
 

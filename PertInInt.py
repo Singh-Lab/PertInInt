@@ -731,6 +731,9 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
                        'intercons', 'interdom', 'interwholegene', 'domcons', 'domwholegene']:
         aggregate_names = aggregate_domain_tracks(file_contents)
 
+    # keep track of how many track types had positive Z-scores:
+    positive_zscore_track_types = set()
+
     # (3) start with the whole gene Z-score if specified
     wholegene_zscore = 0.
     if restriction not in ['interaction', 'domain', 'conservation', 'interdom', 'intercons', 'domcons', 'nowholegene']:
@@ -750,6 +753,7 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
                                                           total_mutational_value)
 
             if wholegene_zscore > 0.:
+                positive_zscore_track_types.add('wholegene')
                 final_zscores.append('WholeGene_NatVar|' + str(wholegene_zscore))
 
     # (3) now process all other tracks:
@@ -772,6 +776,7 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
     track_classes = {}
     for track_id in final_ids:  # track ID -> (type, name)
         track_classes[track_id] = track_name_to_classification(track_names[track_id])
+        positive_zscore_track_types.add(track_classes[track_id])
         if track_classes[track_id] in total_weight:
             current_track_value = positive_mutation_count[track_id][1]  # this should be non-zero by definition
             total_weight[track_classes[track_id]] += sqrt(current_track_value) if current_track_value > 0 else 0.
@@ -811,6 +816,11 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
         if len(final_zscores) > 0 and final_zscores[0].startswith('WholeGene_NatVar|'):
             return wholegene_zscore, ';'.join(final_zscores)
         return 0., ';'.join(final_zscores)  # nothing passed our weighting filter..
+
+    # IF domain tracks were the only positively-weighted tracks for this protein, scale down the score:
+    if positive_zscore_track_types == {'domain'}:
+        zscores.append(0.0001)
+        weights.append(1.)
 
     # finally, compute the combined z-score for this protein:
     weights = np.array(weights)

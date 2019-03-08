@@ -819,6 +819,8 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
 
     # IF domain tracks were the only positively-weighted tracks for this protein, scale down the score:
     if positive_zscore_track_types == {'domain'}:
+        correlation_matrix = np.append(np.vstack([correlation_matrix, [0.] * len(zscores)]),
+                                       np.array([0.] * len(zscores) + [1.]).reshape((len(zscores) + 1, 1)), 1)
         zscores.append(0.0001)
         weights.append(1.)
 
@@ -1151,7 +1153,7 @@ if __name__ == "__main__":
         signal.signal(signal.SIGALRM, handler)  # Register the signal function handler
         signal.alarm(args.timeout)  # Define a timeout for this function
 
-        try:
+        if True:  # try:
             protein_start = time.time()  # start the clock to measure performance for this particular protein
 
             score, track_zscores = protein_ztransform(current_mutations,
@@ -1171,7 +1173,7 @@ if __name__ == "__main__":
                                         track_zscores))
             signal.alarm(0)  # Cancel the alarm if we made it to this point
 
-        except Exception, exc:
+        else:  # except Exception, exc:
             sys.stderr.write('    > skipped: ' + mutated_protein + '\n')
             continue
 

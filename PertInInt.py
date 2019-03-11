@@ -648,7 +648,7 @@ def calculate_wholegene_zscore(gene_probability, current_mut_val, total_mut_cnt,
 ####################################################################################################
 
 def protein_ztransform(mutation_indices, weightfile, current_mutational_value, total_mutational_value,
-                       total_mutation_count, restriction='none', restrict_doms=True):
+                       total_mutation_count, restriction='none'):
     """
     :param mutation_indices: list of mutated indices and their corresponding values in this protein
     :param weightfile: full path to a file containing all binding potential weight tracks for the given protein
@@ -763,7 +763,8 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
 
     # IF domain tracks were the only positively-weighted tracks for this protein, scale down the score,
     # specifically if the whole gene Z-score and conservation scores were not positive...
-    if positive_zscore_track_types == {'domain'} and restrict_doms:
+    if positive_zscore_track_types == {'domain'} and restriction in \
+       ['noconservation', 'domwholegene', 'domcons', 'nointeraction', 'nowholegene', 'none', 'interdom']:
         correlation_matrix = np.append(np.vstack([correlation_matrix, [0.] * len(zscores)]),
                                        np.array([0.] * len(zscores) + [1.]).reshape((len(zscores) + 1, 1)), 1)
         zscores.append(0.0001)
@@ -974,8 +975,6 @@ if __name__ == "__main__":
                                  'intercons', 'interdom', 'interwholegene', 'domcons', 'domwholegene', 'conswholegene'})
     parser.add_argument('--timeout', type=int, help='Maximum number of seconds to spend processing any one protein',
                         default=60)
-    parser.add_argument('--restrict_doms', dest='restrict_doms', action='store_true', default=False,
-                        help='Reduce the impact of genes where only the domain tracks had positive Z-scores.')
     parser.add_argument('--silent', dest='silent_mutations', action='store_true', default=False,
                         help='Run PertInInt on silent mutations only?')
     args = parser.parse_args()
@@ -1103,8 +1102,7 @@ if __name__ == "__main__":
                                                       mut_values.get(mutated_protein, 0.),
                                                       total_mut_value,
                                                       total_mut_count,
-                                                      args.restriction,
-                                                      args.restrict_doms)
+                                                      args.restriction)
 
             protein_total_time = time.time() - protein_start  # end clock to calculate total elapsed time (in seconds)
 

@@ -298,7 +298,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
     # ------------------------------------------------------------------------------------------------
     # (1) get mapping from ensembl gene ID -> set of tumor samples in which this gene is expressed
     expression_by_gene = None
-    if expression_file and mapping_file:
+    if expression_file:
         expression_by_gene = {}
         exp_handle = gzip.open(expression_file) if expression_file.endswith('gz') else open(expression_file)
         for exp_line in exp_handle:
@@ -1077,7 +1077,7 @@ if __name__ == "__main__":
         args.maf_file,  # full path to .maf file
         set(prot_to_geneid.values()),  # set of Ensembl gene IDs with 1+ modelable proteins
         set(prot_to_trackfile.keys()),  # set of Ensembl protein IDs that can be modeled
-        args.ensembl_annotation_file if args.limit_expression else None,
+        args.ensembl_annotation_file,
         args.expression_file if args.limit_expression else None,  # path to expression file
         args.silent_mutations  # whether to limit to synonymous mutations (True) or not (default)
     )

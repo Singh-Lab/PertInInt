@@ -388,7 +388,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
 
         try:
             mut_val = float(v[header.index('t_alt_count')]) / float(v[header.index('t_depth')])
-        except ValueError, TypeError:
+        except (ValueError, TypeError) as _:
             mut_val = 1.
 
         # keep track of all nonsynonymous mutation values and counts across modelable genes

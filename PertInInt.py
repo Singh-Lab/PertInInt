@@ -229,7 +229,9 @@ def aggregate_domain_tracks(file_contents, repeat_domain_limit=40):
 # PROCESS MUTATIONS
 ####################################################################################################
 
-def gene_name_mapping(mapping_file, modelable_ensembl_ids):
+def gene_name_mapping(mapping_file, modelable_ensembl_ids,
+                      ensembl_mapping='/n/data1/hms/dbmi/zaklab/sk758/ensembl/Homo_sapiens.GRCh38/ensembl/' +
+                                      'Homo_sapiens.GRCh38/Homo_sapiens.GRCh38.gene-trans-prot.tsv'):
     """
     :param mapping_file: full path to a tab-delimited file with Ensembl gene ID in the first column and
                          a comma-delimited list of all gene names and synonyms in the third column
@@ -273,7 +275,28 @@ def gene_name_mapping(mapping_file, modelable_ensembl_ids):
         if synonym not in name_mapping:
             name_mapping[synonym] = gene_list
 
-    return name_mapping
+    # get the Ensembl mapping, too
+    prot_to_gene = {}  # Ensembl protein ID -> gene
+    trans_to_gene = {}  # Ensembl transcript ID -> gene
+    trans_to_prot = {}  # Ensembl transcript ID -> Ensembl protein ID
+
+    mapping_handle = gzip.open(ensembl_mapping) if ensembl_mapping.endswith('gz') else open(ensembl_mapping)
+    header = None
+    for mapping_line in mapping_handle:
+        if mapping_line.startswith('#'):
+            continue
+        elif not header:
+            header = mapping_line[:-1].split('\t')
+            continue
+        gene_id, trans_id, prot_id = mapping_line[:-1].split('\t')
+        if prot_id.strip() != '' and gene_id.strip() != '':
+            prot_to_gene[prot_id.strip() != ''] = gene_id.strip() != ''
+        if trans_id.strip() != '' and gene_id.strip() != '':
+            trans_to_gene[trans_id.strip()] = gene_id.strip()
+        if trans_id.strip() != '' and prot_id.strip() != '':
+            trans_to_prot[trans_id.strip()] = prot_id.strip()
+
+    return name_mapping, prot_to_gene, trans_to_gene, trans_to_prot
 
 
 ####################################################################################################
@@ -309,7 +332,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
         exp_handle.close()
 
     # (2) get mapping from gene "name" -> set(ensembl gene IDs)
-    name_to_ensembl = gene_name_mapping(mapping_file, modelable_genes)
+    name_to_ensembl, prot_to_gene, trans_to_gene, trans_to_prot = gene_name_mapping(mapping_file, modelable_genes)
 
     # ------------------------------------------------------------------------------------------------
     # (3) define empty variables (to return)
@@ -327,13 +350,21 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
             continue
         if not header:
             header = mutline.lower()[:-1].split('\t')
+            if 'hugo_symbol' not in header:
+                sys.stderr.write('Improperly formatted .maf file ('+maf_file+'),\n' +
+                                 '"Hugo_Symbol" not found in header. Exiting.\n')
+                sys.exit(1)
             continue
         v = mutline[:-1].split('\t')
 
         # check if pseudogene / non-protein-coding gene:
-        gene_id = v[header.index('gene')]
-        if gene_id.startswith('ENSG'):
-            ensembl_ids = [gene_id]
+        if 'gene' in header and v[header.index('gene')].startswith('ENSG'):
+            ensembl_ids = [v[header.index('gene')].split('.')[0]]
+        elif 'ensp' in header and v[header.index('ensp')].split('.')[0] in prot_to_gene:
+            ensembl_ids = [prot_to_gene[v[header.index('ensp')].split('.')[0]]]
+        elif 'annotation_transcript' in header and \
+             v[header.index('annotation_transcript')].split('.')[0] in trans_to_gene:
+            ensembl_ids = [trans_to_gene[v[header.index('annotation_transcript')].split('.')[0]]]
         else:
             ensembl_ids = name_to_ensembl.get(v[header.index('hugo_symbol')], None)
         if not ensembl_ids:
@@ -355,7 +386,6 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
             else:
                 continue
 
-        prot_id = v[header.index('ensp')]
         mut_val = float(v[header.index('t_alt_count')]) / float(v[header.index('t_depth')])
 
         # keep track of all nonsynonymous mutation values and counts across modelable genes
@@ -366,6 +396,14 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
                 break
 
         # keep track of nonsynonymous mutation values in modelable proteins
+        if 'ensp' in header and v[header.index('ensp')].startswith('ENSP'):
+            prot_id = v[header.index('ensp')].split('.')[0]
+        elif 'annotation_transcript' in header and \
+             v[header.index('annotation_transcript')].split('.')[0] in trans_to_prot:
+            prot_id = trans_to_prot[v[header.index('annotation_transcript')].split('.')[0]]
+        else:
+            continue
+
         if prot_id in modelable_prots:
             mutation_values[prot_id] += mut_val
 
@@ -374,10 +412,18 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
             (silent_mutations and mut_type in ['Silent'])) and prot_id in modelable_prots:
 
             # get mutation position (if possible):
+            mut_pos = None
             try:
-                aachange = mutline[:-1].split('\t')[header.index('hgvsp_short')][2:]  # e.g., p.L414L
-                mut_pos = int(''.join([i for i in list(aachange) if i in map(str, range(10))])) - 1
+                if 'hgvsp_short' in header:
+                    aachange = mutline[:-1].split('\t')[header.index('hgvsp_short')][2:]  # e.g., p.L414L
+                    mut_pos = int(''.join([i for i in list(aachange) if i in map(str, range(10))])) - 1
+                elif 'protein_change' in header:
+                    aachange = mutline[:-1].split('\t')[header.index('protein_change')][2:]  # e.g., p.L414L
+                    mut_pos = int(''.join([i for i in list(aachange) if i in map(str, range(10))])) - 1
             except ValueError:
+                continue
+
+            if not mut_pos:
                 continue
 
             mutation_locations[prot_id].append((mut_pos, mut_val))

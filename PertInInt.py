@@ -230,8 +230,8 @@ def aggregate_domain_tracks(file_contents, repeat_domain_limit=40):
 ####################################################################################################
 
 def gene_name_mapping(mapping_file, modelable_ensembl_ids,
-                      ensembl_mapping='/n/data1/hms/dbmi/zaklab/sk758/ensembl/Homo_sapiens.GRCh38/ensembl/' +
-                                      'Homo_sapiens.GRCh38/Homo_sapiens.GRCh38.gene-trans-prot.tsv'):
+                      ensembl_mapping='/n/data1/hms/dbmi/zaklab/sk758/ensembl/Homo_sapiens.GRCh38/' +
+                                      'Homo_sapiens.GRCh38.gene-trans-prot.tsv'):
     """
     :param mapping_file: full path to a tab-delimited file with Ensembl gene ID in the first column and
                          a comma-delimited list of all gene names and synonyms in the third column

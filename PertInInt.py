@@ -402,9 +402,10 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
             #  'synonymous_variant', 'upstream_gene_variant']
 
             # keep track of total mutations in this gene...
-            if (silent_mutations and 'synonymous_variant' in v[header.index('all_effects')]) or \
+            if (silent_mutations and True in [vtype in v[header.index('all_effects')] for vtype in
+                                              ['synonymous_variant', 'stop_retained_variant']]) or \
                (not silent_mutations and True in [vtype in v[header.index('all_effects')] for vtype in
-                                                  ['missense_variant', 'stop_gained', 'stop_retained_variant']]):
+                                                  ['missense_variant', 'stop_gained', 'start_lost', 'stop_lost']]):
                 for ensg_id in ensembl_ids:
                     if ensg_id in modelable_genes:
                         total_mutations += 1
@@ -418,13 +419,13 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
                     mut_type = r.split(',')[1]
                 except IndexError:
                     continue
-                if (silent_mutations and mut_type != 'synonymous_variant') or \
-                   (not silent_mutations and mut_type not in ['missense_variant', 'stop_gained',
-                                                              'stop_retained_variant']):
+                if (silent_mutations and mut_type not in ['synonymous_variant', 'stop_retained_variant']) or \
+                   (not silent_mutations and mut_type not in ['missense_variant', 'stop_gained', 'start_lost',
+                                                              'stop_lost']):
                     continue
 
                 # get the protein ID (if we can...)
-                trans_id = set([a.split('.')[0] for a in r.split(',') if len(a) == 15 and a.startswith('ENST')])
+                trans_id = set([a.split('.')[0] for a in r.split(',') if len(a) >= 15 and a.startswith('ENST')])
                 if len(trans_id) > 1:
                     continue
                 trans_id = trans_id.pop()

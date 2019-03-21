@@ -412,6 +412,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
                 except IndexError:
                     print v[header.index('all_effects')].split(';')
                     print r.split(',')
+                    sys.exit(1)
                 if (silent_mutations and mut_type != 'synonymous_variant') or \
                    (not silent_mutations and mut_type not in ['missense_variant', 'stop_retained_variant']):
                     continue

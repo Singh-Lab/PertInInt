@@ -357,7 +357,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
             continue
         v = mutline[:-1].split('\t')
 
-        # check if pseudogene / non-protein-coding gene:
+        # (i) check if pseudogene / non-protein-coding gene:
         if 'gene' in header and v[header.index('gene')].startswith('ENSG'):
             ensembl_ids = [v[header.index('gene')].split('.')[0]]
         elif 'ensp' in header and v[header.index('ensp')].split('.')[0] in prot_to_gene:
@@ -365,19 +365,18 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
         elif 'annotation_transcript' in header and \
              v[header.index('annotation_transcript')].split('.')[0] in trans_to_gene:
             ensembl_ids = [trans_to_gene[v[header.index('annotation_transcript')].split('.')[0]]]
+        elif 'all_effects' in header and len([tid for grp in v[header.index('all_effects')].split(':')
+                                              for tid in grp.split(',')
+                                              if tid.startswith('ENST') and tid.split('.')[0] in trans_to_gene]) > 0:
+            ensembl_ids = list(set([trans_to_gene[tid.split('.')[0]].split('.')[0]
+                                    for grp in v[header.index('all_effects')].split(':') for tid in grp.split(',')
+                                    if tid.startswith('ENST') and tid.split('.')[0] in trans_to_gene]))
         else:
             ensembl_ids = name_to_ensembl.get(v[header.index('hugo_symbol')], None)
         if not ensembl_ids:
             continue
 
-        # check if missense/nonsense mutation:
-        mut_type = v[header.index('variant_classification')].replace('_Mutation', '')
-        if not silent_mutations and mut_type not in ['Missense', 'Nonsense']:
-            continue
-        if silent_mutations and mut_type not in ['Silent']:
-            continue
-
-        # make sure this mutation is occurring in a gene that is expressed
+        # (ii) make sure this mutation is occurring in a gene that is expressed
         sample_id = '-'.join(v[header.index('tumor_sample_barcode')].split('-')[:4])
         if expression_by_gene:
             for ensg_id in ensembl_ids:
@@ -386,50 +385,101 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
             else:
                 continue
 
+        # (iii) get the value of the mutation
         try:
             mut_val = float(v[header.index('t_alt_count')]) / float(v[header.index('t_depth')])
         except (ValueError, TypeError) as _:
             mut_val = 1.
 
-        # keep track of all nonsynonymous mutation values and counts across modelable genes
-        for ensg_id in ensembl_ids:
-            if ensg_id in modelable_genes:
-                total_mutations += 1
-                total_mutational_value += mut_val
-                break
+        # (iv) look at ALL protein changes across ALL isoforms (if easily possible)
+        if 'all_effects' in header:
 
-        # keep track of nonsynonymous mutation values in modelable proteins
-        if 'ensp' in header and v[header.index('ensp')].startswith('ENSP'):
-            prot_id = v[header.index('ensp')].split('.')[0]
-        elif 'annotation_transcript' in header and \
-             v[header.index('annotation_transcript')].split('.')[0] in trans_to_prot:
-            prot_id = trans_to_prot[v[header.index('annotation_transcript')].split('.')[0]]
+            # keep track of total mutations in this gene...
+            if (silent_mutations and 'synonymous_variant' in v[header.index('all_effects')]) or \
+               (not silent_mutations and True in [vtype in v[header.index('all_effects')] for vtype in
+                                                  ['missense_variant', 'stop_retained_variant']]):
+                for ensg_id in ensembl_ids:
+                    if ensg_id in modelable_genes:
+                        total_mutations += 1
+                        total_mutational_value += mut_val
+                        break
+
+            for r in v[header.index('all_effects')].split(';'):
+
+                # limit to the right mutation type(s):
+                mut_type = [vtype for vtype in r.split(',') if vtype.endswith('_variant')][0]
+                if (silent_mutations and mut_type != 'synonymous_variant') or \
+                   (not silent_mutations and mut_type not in ['missense_variant', 'stop_retained_variant']):
+                    continue
+
+                # get the protein ID (if we can...)
+                trans_id = set([a.split('.')[0] for a in r.split(',') if a.startswith('ENS')])
+                if len(trans_id) > 1:
+                    continue
+                trans_id = trans_id.pop()
+                if trans_id not in trans_to_prot:
+                    continue
+                prot_id = trans_to_prot[trans_id]
+                if prot_id not in modelable_prots:
+                    continue
+
+                # get the protein mutation position (HGVS) if we can
+                if (silent_mutations and mut_type == 'synonymous_variant') or \
+                   (not silent_mutations and mut_type == 'missense_variant'):
+                    aachange = set([a[2:] for a in r.split(',') if a.startswith('p.')])
+                    if len(aachange) > 1:
+                        continue
+                    aachange = aachange.pop()
+                    mut_pos = int(''.join([i for i in list(aachange) if i in map(str, range(10))])) - 1
+
+                    mutation_locations[prot_id].append((mut_pos, mut_val))
+
+        # (v) otherwise, look at this one canonical protein change in this one chosen isoform:
         else:
-            continue
+            # limit to the right mutation type(s):
+            mut_type = v[header.index('variant_classification')].replace('_Mutation', '')
+            if (silent_mutations and mut_type not in ['Silent']) or \
+               (not silent_mutations and mut_type not in ['Missense', 'Nonsense']):
+                continue
 
-        if prot_id in modelable_prots:
+            # keep track of all mutations in this gene
+            for ensg_id in ensembl_ids:
+                if ensg_id in modelable_genes:
+                    total_mutations += 1
+                    total_mutational_value += mut_val
+                    break
+
+            # find protein ID
+            if 'ensp' in header and v[header.index('ensp')].startswith('ENSP'):
+                prot_id = v[header.index('ensp')].split('.')[0]
+            elif 'annotation_transcript' in header and \
+                 v[header.index('annotation_transcript')].split('.')[0] in trans_to_prot:
+                prot_id = trans_to_prot[v[header.index('annotation_transcript')].split('.')[0]].split('.')[0]
+            else:
+                continue
+            if prot_id not in modelable_prots:
+                continue
             mutation_values[prot_id] += mut_val
 
-        # keep track of all missense mutations in modelable proteins
-        if ((not silent_mutations and mut_type in ['Missense']) or
-            (silent_mutations and mut_type in ['Silent'])) and prot_id in modelable_prots:
+            # keep track of all missense mutations in modelable proteins
+            if (silent_mutations and mut_type in ['Silent']) or (not silent_mutations and mut_type in ['Missense']):
 
-            # get mutation position (if possible):
-            mut_pos = None
-            try:
-                if 'hgvsp_short' in header:
-                    aachange = mutline[:-1].split('\t')[header.index('hgvsp_short')][2:]  # e.g., p.L414L
+                # get mutation position (if possible):
+                try:
+                    if 'hgvsp_short' in header:
+                        aachange = mutline[:-1].split('\t')[header.index('hgvsp_short')][2:]  # e.g., p.L414L
+                    elif 'protein_change' in header:
+                        aachange = mutline[:-1].split('\t')[header.index('protein_change')][2:]  # e.g., p.L414L
+                    else:
+                        continue
                     mut_pos = int(''.join([i for i in list(aachange) if i in map(str, range(10))])) - 1
-                elif 'protein_change' in header:
-                    aachange = mutline[:-1].split('\t')[header.index('protein_change')][2:]  # e.g., p.L414L
-                    mut_pos = int(''.join([i for i in list(aachange) if i in map(str, range(10))])) - 1
-            except ValueError:
-                continue
+                except ValueError:
+                    continue
 
-            if not mut_pos:
-                continue
+                if not mut_pos:
+                    continue
 
-            mutation_locations[prot_id].append((mut_pos, mut_val))
+                mutation_locations[prot_id].append((mut_pos, mut_val))
 
     return mutation_locations, mutation_values, total_mutational_value, total_mutations
 

@@ -392,12 +392,19 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
             mut_val = 1.
 
         # (iv) look at ALL protein changes across ALL isoforms (if easily possible)
-        if 'all_effects' in header:
+        if 'all_effects' in header and len(v[header.index('all_effects')].strip()) > 0:
+
+            # ALL POSSIBLE VARIANT TYPES:
+            # ['3_prime_UTR_variant', '5_prime_UTR_variant', 'coding_sequence_variant', 'downstream_gene_variant',
+            #  'incomplete_terminal_codon_variant', 'intron_variant', 'mature_miRNA_variant', 'missense_variant',
+            #  'non_coding_transcript_exon_variant', 'splice_acceptor_variant', 'splice_donor_variant',
+            #  'splice_region_variant', 'start_lost', 'stop_gained', 'stop_lost', 'stop_retained_variant',
+            #  'synonymous_variant', 'upstream_gene_variant']
 
             # keep track of total mutations in this gene...
             if (silent_mutations and 'synonymous_variant' in v[header.index('all_effects')]) or \
                (not silent_mutations and True in [vtype in v[header.index('all_effects')] for vtype in
-                                                  ['missense_variant', 'stop_retained_variant']]):
+                                                  ['missense_variant', 'stop_gained', 'stop_retained_variant']]):
                 for ensg_id in ensembl_ids:
                     if ensg_id in modelable_genes:
                         total_mutations += 1
@@ -408,17 +415,16 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
 
                 # limit to the right mutation type(s):
                 try:
-                    mut_type = [vtype for vtype in r.split(',') if vtype.endswith('_variant')][0]
+                    mut_type = r.split(',')[1]
                 except IndexError:
-                    print v[header.index('all_effects')].split(';')
-                    print r.split(',')
-                    sys.exit(1)
+                    continue
                 if (silent_mutations and mut_type != 'synonymous_variant') or \
-                   (not silent_mutations and mut_type not in ['missense_variant', 'stop_retained_variant']):
+                   (not silent_mutations and mut_type not in ['missense_variant', 'stop_gained',
+                                                              'stop_retained_variant']):
                     continue
 
                 # get the protein ID (if we can...)
-                trans_id = set([a.split('.')[0] for a in r.split(',') if a.startswith('ENS')])
+                trans_id = set([a.split('.')[0] for a in r.split(',') if len(a) == 15 and a.startswith('ENST')])
                 if len(trans_id) > 1:
                     continue
                 trans_id = trans_id.pop()

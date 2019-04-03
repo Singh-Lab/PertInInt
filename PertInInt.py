@@ -961,7 +961,8 @@ def mapping_gene_to_driver(annotate_drivers, driver_annotation_file):
 def reformat_results(initial_results, concatenated_output_file, maf_file, track_path, annotation_file,
                      expression_file=None, annotate_drivers=False, driver_annotation_file=None):
     """
-    :param initial_results: set of all proteins, their gene names, combined z-scores, run times, and mutated tracks
+    :param initial_results: set of all proteins, their gene names, total mutations, combined z-scores, run times,
+                            and mutated tracks
     :param concatenated_output_file: single output file containing the combined output from the input files
     :param maf_file: input maf file that was run on
     :param track_path: full path to tracks used
@@ -974,11 +975,12 @@ def reformat_results(initial_results, concatenated_output_file, maf_file, track_
 
     # Get Ensembl gene ID -> (best isoform score, total time to run across all isoforms)
     gene_to_score = {}
-    header = ['prot_id', 'gene_id', 'score', 'total_time', 'track_zscores']
+    header = ['prot_id', 'gene_id', 'mut_count', 'score', 'total_time', 'track_zscores']
     for v in initial_results:
 
-        # (1) get the gene name and the combined Z-score for this isoform
+        # (1) get the gene name, mutation count, and the combined Z-score for this isoform
         gene_id = v[header.index('gene_id')]
+        gene_mutcount = v[header.index('mut_count')]
         gene_zscore = v[header.index('score')]
 
         # (2) keep track of the time it took to run this particular protein:
@@ -991,14 +993,19 @@ def reformat_results(initial_results, concatenated_output_file, maf_file, track_
 
         # (4) include this gene if it hasn't yet been observed:
         if gene_id not in gene_to_score:
-            gene_to_score[gene_id] = {'score': gene_zscore,
+            gene_to_score[gene_id] = {'mut_count': gene_mutcount,
+                                      'score': gene_zscore,
                                       'time': total_seconds,
                                       'tracks': track_names}
 
         # (5) update the total seconds, score, and track names otherwise
         else:
             # (5a) update the score (i.e., take the maximum)
-            gene_to_score[gene_id]['score'] = max(gene_to_score[gene_id]['score'], gene_zscore)
+            if gene_mutcount > gene_to_score[gene_id]['mut_count']:
+                gene_to_score[gene_id]['mut_count'] = gene_mutcount
+                gene_to_score[gene_id]['score'] = gene_zscore
+            elif gene_mutcount == gene_to_score[gene_id]['mut_count']:
+                gene_to_score[gene_id]['score'] = max(gene_to_score[gene_id]['score'], gene_zscore)
 
             # (5b) tack onto the total time
             gene_to_score[gene_id]['time'] += total_seconds
@@ -1218,11 +1225,12 @@ if __name__ == "__main__":
             protein_total_time = time.time() - protein_start  # end clock to calculate total elapsed time (in seconds)
 
             # save these results:
-            per_protein_results.append((mutated_protein,
-                                        prot_to_geneid.get(mutated_protein, ''),
-                                        score,
-                                        protein_total_time,
-                                        track_zscores))
+            per_protein_results.append((mutated_protein,  # prot ID
+                                        prot_to_geneid.get(mutated_protein, ''),  # gene ID
+                                        len(current_mutations),  # total mutations in protein
+                                        score,  # overall z-score
+                                        protein_total_time,  # time to run
+                                        track_zscores))  # per-track z-scores
             signal.alarm(0)  # Cancel the alarm if we made it to this point
 
         except Exception, exc:

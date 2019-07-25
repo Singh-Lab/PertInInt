@@ -277,13 +277,13 @@ def gene_name_mapping(mapping_file, modelable_ensembl_ids):
 
         # keep track of gene -> transcript -> protein mapping
         for tp in tp_mapping.split(','):
-            for trans_id, prot_id in tp.split(':')[:2]:
-                if prot_id.strip() != '' and ensembl_id.strip() != '':
-                    prot_to_gene[prot_id.strip() != ''] = ensembl_id.strip() != ''
-                if trans_id.strip() != '' and ensembl_id.strip() != '':
-                    trans_to_gene[trans_id.strip()] = ensembl_id.strip()
-                if trans_id.strip() != '' and prot_id.strip() != '':
-                    trans_to_prot[trans_id.strip()] = prot_id.strip()
+            trans_id, prot_id = [new_id.strip() for new_id in tp.split(':')[:2]]
+            if prot_id != '' and ensembl_id != '':
+                prot_to_gene[prot_id] = ensembl_id
+            if trans_id != '' and ensembl_id != '':
+                trans_to_gene[trans_id] = ensembl_id
+            if trans_id != '' and prot_id != '':
+                trans_to_prot[trans_id] = prot_id
     mapping_handle.close()
 
     # include those synonyms in the mapping *IF* they have not already been identified as a primary gene name

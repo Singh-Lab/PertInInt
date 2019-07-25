@@ -98,7 +98,7 @@ def track_weights_list(trackweight_path, limit_chromosomes=None):
                             if os.path.isdir(trackweight_path+chrom_id+'/'+d)]:
                 for track_file in [d for d in os.listdir(trackweight_path+chrom_id+'/'+gene_id) if d.endswith(suffix)]:
 
-                    prot_id = track_file[:track_file.find(suffix)]
+                    prot_id = track_file[:track_file.rfind(suffix)]
                     protid_to_track[prot_id] = trackweight_path + chrom_id + '/' + gene_id + '/' + track_file
                     protid_to_geneid[prot_id] = gene_id
 
@@ -229,9 +229,7 @@ def aggregate_domain_tracks(file_contents, repeat_domain_limit=40):
 # PROCESS MUTATIONS
 ####################################################################################################
 
-def gene_name_mapping(mapping_file, modelable_ensembl_ids,
-                      ensembl_mapping='/n/data1/hms/dbmi/zaklab/sk758/ensembl/Homo_sapiens.GRCh38/' +
-                                      'Homo_sapiens.GRCh38.gene-trans-prot.tsv'):
+def gene_name_mapping(mapping_file, modelable_ensembl_ids):
     """
     :param mapping_file: full path to a tab-delimited file with Ensembl gene ID in the first column and
                          a comma-delimited list of all gene names and synonyms in the third column
@@ -242,6 +240,11 @@ def gene_name_mapping(mapping_file, modelable_ensembl_ids,
     name_mapping = {}  # primary gene name -> set(ensembl gene IDs)
     synonym_mapping = {}  # any gene name -> set(ensembl gene IDs)
 
+    # get the Ensembl mapping, too
+    prot_to_gene = {}  # Ensembl protein ID -> gene
+    trans_to_gene = {}  # Ensembl transcript ID -> gene
+    trans_to_prot = {}  # Ensembl transcript ID -> Ensembl protein ID
+
     mapping_handle = gzip.open(mapping_file) if mapping_file.endswith('gz') else open(mapping_file)
     header = None
     for mapping_line in mapping_handle:
@@ -251,7 +254,11 @@ def gene_name_mapping(mapping_file, modelable_ensembl_ids,
             header = mapping_line[:-1].split('\t')
             continue
 
-        ensembl_id, main_id, alt_ids = mapping_line[:-1].split('\t')[:3]
+        v = mapping_line[:-1].split('\t')
+        ensembl_id = v[header.index('ensembl_gene_id')]
+        main_id = v[header.index('primary_gene_names')]
+        alt_ids = v[header.index('gene_synonyms')]
+        tp_mapping = v[header.index('transcript_protein_mapping')]
 
         # skip ensembl genes that cannot be modeled
         if ensembl_id not in modelable_ensembl_ids:
@@ -268,6 +275,15 @@ def gene_name_mapping(mapping_file, modelable_ensembl_ids,
             name_mapping[main_id] = set()
         name_mapping[main_id].add(ensembl_id)
 
+        # keep track of gene -> transcript -> protein mapping
+        for tp in tp_mapping.split(','):
+            for trans_id, prot_id in tp.split(':')[:2]:
+                if prot_id.strip() != '' and ensembl_id.strip() != '':
+                    prot_to_gene[prot_id.strip() != ''] = ensembl_id.strip() != ''
+                if trans_id.strip() != '' and ensembl_id.strip() != '':
+                    trans_to_gene[trans_id.strip()] = ensembl_id.strip()
+                if trans_id.strip() != '' and prot_id.strip() != '':
+                    trans_to_prot[trans_id.strip()] = prot_id.strip()
     mapping_handle.close()
 
     # include those synonyms in the mapping *IF* they have not already been identified as a primary gene name
@@ -275,34 +291,13 @@ def gene_name_mapping(mapping_file, modelable_ensembl_ids,
         if synonym not in name_mapping:
             name_mapping[synonym] = gene_list
 
-    # get the Ensembl mapping, too
-    prot_to_gene = {}  # Ensembl protein ID -> gene
-    trans_to_gene = {}  # Ensembl transcript ID -> gene
-    trans_to_prot = {}  # Ensembl transcript ID -> Ensembl protein ID
-
-    mapping_handle = gzip.open(ensembl_mapping) if ensembl_mapping.endswith('gz') else open(ensembl_mapping)
-    header = None
-    for mapping_line in mapping_handle:
-        if mapping_line.startswith('#'):
-            continue
-        elif not header:
-            header = mapping_line[:-1].split('\t')
-            continue
-        gene_id, trans_id, prot_id = mapping_line[:-1].split('\t')
-        if prot_id.strip() != '' and gene_id.strip() != '':
-            prot_to_gene[prot_id.strip() != ''] = gene_id.strip() != ''
-        if trans_id.strip() != '' and gene_id.strip() != '':
-            trans_to_gene[trans_id.strip()] = gene_id.strip()
-        if trans_id.strip() != '' and prot_id.strip() != '':
-            trans_to_prot[trans_id.strip()] = prot_id.strip()
-
     return name_mapping, prot_to_gene, trans_to_gene, trans_to_prot
 
 
 ####################################################################################################
 
 def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mapping_file, expression_file,
-                               silent_mutations=False):
+                               silent_mutations=False, weight_mutations=True):
     """
     :param maf_file: full path to a .maf formatted file with somatic mutations
     :param modelable_genes: dictionary of Ensembl gene IDs -> modelable protein IDs
@@ -312,6 +307,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
     :param expression_file: full path to a tab-delimited file containing Ensembl gene IDs and the set of tumor
                             samples in which that gene is expressed
     :param silent_mutations: boolean indicating whether to limit to synonymous mutations (True) or not
+    :param weight_mutations: boolean indicating whether to weight each mutation by its tumor fraction (True) or not
     :return: (1) dictionary prot_id -> [(0-index position of missense mutation, mutational value), ...]
              (2) dictionary prot_id -> total nonsynonymous mutational burden (allelic fraction)
              (3) total nonsynonymous mutational burden across all genes
@@ -386,10 +382,12 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
                 continue
 
         # (iii) get the value of the mutation
-        try:
-            mut_val = float(v[header.index('t_alt_count')]) / float(v[header.index('t_depth')])
-        except (ValueError, TypeError) as _:
-            mut_val = 1.
+        mut_val = 1.
+        if weight_mutations:
+            try:
+                mut_val = float(v[header.index('t_alt_count')]) / float(v[header.index('t_depth')])
+            except (ValueError, TypeError, ZeroDivisionError) as _:
+                mut_val = 1.
 
         # (iv) look at ALL protein changes across ALL isoforms (if easily possible)
         if 'all_effects' in header and len(v[header.index('all_effects')].strip()) > 0:
@@ -410,11 +408,11 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
                     if ensg_id in modelable_genes:
                         total_mutations += 1
                         total_mutational_value += mut_val
-                        break
+                        break  # a single gene mutation with 2+ effects across isoforms shouldn't affect totals
 
             for r in v[header.index('all_effects')].split(';'):
 
-                # limit to the right mutation type(s):
+                # limit to the desired mutation type(s):
                 try:
                     mut_type = r.split(',')[1]
                 except IndexError:
@@ -434,6 +432,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
                 prot_id = trans_to_prot[trans_id]
                 if prot_id not in modelable_prots:
                     continue
+                mutation_values[prot_id] += mut_val
 
                 # get the protein mutation position (HGVS) if we can
                 if (silent_mutations and mut_type == 'synonymous_variant') or \
@@ -448,7 +447,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
 
         # (v) otherwise, look at this one canonical protein change in this one chosen isoform:
         else:
-            # limit to the right mutation type(s):
+            # limit to the desired mutation type(s):
             mut_type = v[header.index('variant_classification')].replace('_Mutation', '')
             if (silent_mutations and mut_type not in ['Silent']) or \
                (not silent_mutations and mut_type not in ['Missense', 'Nonsense']):
@@ -1085,6 +1084,9 @@ if __name__ == "__main__":
                         help='Don\'t restrict mutations to those found in genes expressed at >0.1 TPM?')
     parser.add_argument('--no_driver_id', dest='annotate_drivers', action='store_false', default=True,
                         help='Don\'t annotate output with cancer driver gene status?')
+    parser.add_argument('--no_alt_fraction', dest='weight_by_alt_frac', action='store_false', default=True,
+                        help='Don\'t weight each mutation by the fraction of reads it was found in \n' +
+                             '(e.g., when not looking at tumor samples called with respect to a paired normal)')
 
     parser.add_argument('--restriction', type=str, help='Restrict to certain lines of functionality evidence',
                         default='none',
@@ -1180,12 +1182,17 @@ if __name__ == "__main__":
     # NOTE: for whole gene tracks, we measure all nonsynonymous mutations, whereas for within-protein tracks,
     #       we are only interested in missense mutations
     sys.stderr.write('(2) Reading in mutation data...\n' +
-                     '    > input maf file: ' + args.maf_file + '\n' +
                      '    > gene name mapping file: ' + args.ensembl_annotation_file + '\n' +
                      ('' if not args.limit_expression else
-                      '    > expressed genes list: ' + args.expression_file + '\n') +
+                      '    > expressed genes list: ' + args.expression_file + ' ' +
+                      '(run with the --no_expression flag to remove this limitation)\n') +
                      ('' if not args.silent_mutations else
-                      '    > limiting to synonymous mutations\n'))
+                      '    > limiting to synonymous mutations ' +
+                      '(run without the --silent flag to remove this limitation)\n') +
+                     ('' if not args.weight_by_alt_frac else
+                      '    > weighting each variant by fraction of reads containing that variant ' +
+                      '(run with the --no_alt_fraction to remove this feature)\n') +
+                     '    > input maf file: ' + args.maf_file + '\n')
     start = time.time()
 
     (mut_locs,  # prot_id -> [(0-index position of missense mutation, mutational value), ...]
@@ -1197,7 +1204,8 @@ if __name__ == "__main__":
         set(prot_to_trackfile.keys()),  # set of Ensembl protein IDs that can be modeled
         args.ensembl_annotation_file,
         args.expression_file if args.limit_expression else None,  # path to expression file
-        args.silent_mutations  # whether to limit to synonymous mutations (True) or not (default)
+        args.silent_mutations,  # whether to limit to synonymous mutations (True) or not (default)
+        args.weight_by_alt_frac  # whether to weight each mutation by its "allelic" fraction
     )
     sys.stderr.write('    ! finished in '+reformat_time(time.time()-start)+'\n')
 
@@ -1242,9 +1250,10 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------------------------------
     # (4) reformat per-protein results:
     sys.stderr.write('(4) Reformatting PertInInt results...\n' +
-                     '    > final output file: ' + args.out_file + '\n' +
                      ('' if not args.annotate_drivers else
-                      '    > cancer driver annotations: ' + args.driver_annotation_file + '\n'))
+                      '    > cancer driver annotations: ' + args.driver_annotation_file + '\n') +
+                     '    > final output file: ' + args.out_file + '\n')
+
     start = time.time()
     reformat_results(per_protein_results,
                      args.out_file,

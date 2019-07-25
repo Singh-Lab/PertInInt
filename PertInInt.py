@@ -400,10 +400,14 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
             #  'synonymous_variant', 'upstream_gene_variant']
 
             # keep track of total mutations in this gene...
-            if (silent_mutations and True in [vtype in v[header.index('all_effects')] for vtype in
-                                              ['synonymous_variant', 'stop_retained_variant']]) or \
-               (not silent_mutations and True in [vtype in v[header.index('all_effects')] for vtype in
-                                                  ['missense_variant', 'stop_gained', 'start_lost', 'stop_lost']]):
+            if (silent_mutations and
+                True in [vtype in v[header.index('all_effects')] for vtype in
+                         ['synonymous_variant', 'stop_retained_variant']] and
+                True not in [vtype in v[header.index('all_effects')] for vtype in
+                             ['missense_variant', 'stop_gained', 'start_lost', 'stop_lost']]) or \
+               (not silent_mutations and
+                True in [vtype in v[header.index('all_effects')] for vtype in
+                         ['missense_variant', 'stop_gained', 'start_lost', 'stop_lost']]):
                 for ensg_id in ensembl_ids:
                     if ensg_id in modelable_genes:
                         total_mutations += 1

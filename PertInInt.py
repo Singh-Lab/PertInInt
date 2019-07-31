@@ -335,6 +335,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
     mutation_values = {prot_id: 0. for prot_id in modelable_prots}  # prot -> total mutational burden
     mutation_locations = {prot_id: [] for prot_id in modelable_prots}  # prot -> [(loc, type, value), ...]
     total_mutational_value = 0.
+    totsq_mutational_value = 0.
     total_mutations = 0
 
     # ------------------------------------------------------------------------------------------------
@@ -412,6 +413,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
                     if ensg_id in modelable_genes:
                         total_mutations += 1
                         total_mutational_value += mut_val
+                        totsq_mutational_value += mut_val ** 2
                         break  # a single gene mutation with 2+ effects across isoforms shouldn't affect totals
 
             for r in v[header.index('all_effects')].split(';'):
@@ -428,10 +430,10 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
 
                 # get the protein ID (if we can...)
                 trans_id = set([a.split('.')[0] for a in r.split(',') if len(a) >= 15 and a.startswith('ENST')])
-                if len(trans_id) > 1:
+                if len(trans_id) > 1:  # there should only be one transcript
                     continue
                 trans_id = trans_id.pop()
-                if trans_id not in trans_to_prot:
+                if trans_id not in trans_to_prot:  # and this transcript should have a single protein product
                     continue
                 prot_id = trans_to_prot[trans_id]
                 if prot_id not in modelable_prots:
@@ -445,7 +447,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
                     if len(aachange) > 1:
                         continue
                     aachange = aachange.pop()
-                    mut_pos = int(''.join([i for i in list(aachange) if i in map(str, range(10))])) - 1
+                    mut_pos = int(''.join([i for i in list(aachange) if i in map(str, range(10))])) - 1  # 0-index
 
                     mutation_locations[prot_id].append((mut_pos, mut_val))
 
@@ -462,6 +464,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
                 if ensg_id in modelable_genes:
                     total_mutations += 1
                     total_mutational_value += mut_val
+                    totsq_mutational_value += mut_val ** 2
                     break
 
             # find protein ID
@@ -496,7 +499,7 @@ def process_mutations_from_maf(maf_file, modelable_genes, modelable_prots, mappi
 
                 mutation_locations[prot_id].append((mut_pos, mut_val))
 
-    return mutation_locations, mutation_values, total_mutational_value, total_mutations
+    return mutation_locations, mutation_values, total_mutational_value, totsq_mutational_value, total_mutations
 
 
 ####################################################################################################
@@ -729,32 +732,34 @@ def update_covariance_matrix(current_cov, existing_tracks, other_id, covariances
 # CALCULATE COMBINED Z-SCORE
 ####################################################################################################
 
-def calculate_wholegene_zscore(gene_probability, current_mut_val, total_mut_cnt, total_mut_val):
+def calculate_wholegene_zscore(gene_probability, current_mut_val, total_mut_cnt, total_mut_val, totsq_mut_val):
     """
     :param gene_probability: relative likelihood of this gene harboring a nonsynonymous mutation
     :param current_mut_val: total sum of nonsynonymous mutation values landing in this gene
     :param total_mut_cnt: total sum of nonsynonymous mutation COUNTS landing across all modelable genes
     :param total_mut_val: total sum of nonsynonymous mutation VALUES landing across all modelable genes
+    :param totsq_mut_val: total sum of squared nonsynonymous mutation VALUES landing across all modelable genes
     :return: z-score indicating the enrichment or depletion of mutations falling into this gene
     """
 
     # determine how to scale the total mutation count to get reasonably-sized Z-scores
+    scale_factor = 1. / sqrt(total_mut_cnt)  # scale down the eventual observed mut counts
 
-    exp_mutval = total_mut_val / total_mut_cnt  # average mutation value
-    scaled_mutcount = sqrt(total_mut_val) / exp_mutval  # scale the total mutations down to its square root
-    total_mutval = scaled_mutcount * exp_mutval  # reset the total mutational value
-    totsq_mutval = scaled_mutcount * exp_mutval * exp_mutval  # reset the total mutational squared values
-    scale_factor = sqrt(total_mut_val) / total_mut_val  # scale down the eventual observed mut counts
+    # exp_mutval = total_mut_val / total_mut_cnt  # average mutation value
+    # scaled_mutcount = sqrt(total_mut_val) / exp_mutval  # scale the total mutations down to its square root
+    # total_mutval = scaled_mutcount * exp_mutval  # reset the total mutational value
+    # totsq_mutval = scaled_mutcount * exp_mutval * exp_mutval  # reset the total mutational squared values
+    # scale_factor = sqrt(total_mut_val) / total_mut_val  # scale down the eventual observed mut counts
 
     # whole gene track looks like: [0,0,0,0,...,1,...,0,0,0,0]. The sum of this AND the sum of these entries squared
     # are both 1, which is why the variance calculation works out below (the likelihood of landing on the 1 is same)
 
-    mut_expected = gene_probability
-    mut_variance = mut_expected - mut_expected ** 2
+    # mut_expected = gene_probability
+    # mut_variance = mut_expected - mut_expected ** 2
 
-    prot_observed = current_mut_val * scale_factor
-    prot_expected = total_mutval * mut_expected
-    prot_variance = totsq_mutval * mut_variance
+    prot_observed = scale_factor * current_mut_val
+    prot_expected = scale_factor * gene_probability * total_mut_val
+    prot_variance = ((scale_factor * gene_probability) - (scale_factor ** 2 * gene_probability ** 2)) * totsq_mut_val
 
     return (prot_observed - prot_expected) / sqrt(prot_variance if prot_variance > 0 else 1.)
 
@@ -762,12 +767,13 @@ def calculate_wholegene_zscore(gene_probability, current_mut_val, total_mut_cnt,
 ####################################################################################################
 
 def protein_ztransform(mutation_indices, weightfile, current_mutational_value, total_mutational_value,
-                       total_mutation_count, restriction='none'):
+                       totsq_mutation_value, total_mutation_count, restriction='none'):
     """
     :param mutation_indices: list of mutated indices and their corresponding values in this protein
     :param weightfile: full path to a file containing all binding potential weight tracks for the given protein
     :param current_mutational_value: sum of mutation values falling into this particular protein
     :param total_mutational_value: total sum of mutation values falling across all modelable proteins
+    :param totsq_mutation_value: total sum of squared mutation values falling across all modelable proteins
     :param total_mutation_count: total number of distinct mutational events occurring across all modelable proteins
     :param restriction: str indicating a particular subset of tracks to consider (e.g., interaction, conservation, dom)
     :return: a combined Z-score
@@ -808,7 +814,8 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
             wholegene_zscore = calculate_wholegene_zscore(gene_probability,
                                                           current_mutational_value,
                                                           total_mutation_count,
-                                                          total_mutational_value)
+                                                          total_mutational_value,
+                                                          totsq_mutation_value)
 
             if wholegene_zscore > 0.:
                 positive_zscore_track_types.add('wholegene')
@@ -1202,6 +1209,7 @@ if __name__ == "__main__":
     (mut_locs,  # prot_id -> [(0-index position of missense mutation, mutational value), ...]
      mut_values,  # prot_id -> total mutational value (allelic fraction) for nonsynonymous mutations
      total_mut_value,  # total overall mutational value (allelic fraction) for nonsynonymous mutations
+     totsq_mut_value,  # total squared overall mutational value (allelic fraction) for nonsynonymous mutations
      total_mut_count) = process_mutations_from_maf(  # total overall mutation events (mutation count)
         args.maf_file,  # full path to .maf file
         set(prot_to_geneid.values()),  # set of Ensembl gene IDs with 1+ modelable proteins
@@ -1231,6 +1239,7 @@ if __name__ == "__main__":
                                                       prot_to_trackfile.get(mutated_protein, None),
                                                       mut_values.get(mutated_protein, 0.),
                                                       total_mut_value,
+                                                      totsq_mut_value,
                                                       total_mut_count,
                                                       args.restriction)
 

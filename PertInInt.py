@@ -1170,6 +1170,14 @@ if __name__ == "__main__":
                          '* Usage: python '+sys.argv[0]+' --maf_file <input_file> ' +
                          '--out_file <output_file>\n')
         sys.exit(1)
+    if True:  # try:
+        out_handle = open(args.out_file, 'w')
+        out_handle.close()
+    else:  # except:
+        sys.stderr.write('* Could not write to specified output file: ' + str(args.out_file) + '\n' +
+                         '* Usage: python '+sys.argv[0]+' --maf_file <input_file> ' +
+                         '--out_file <output_file>\n')
+        sys.exit(1)
 
     for subdir in ['/'.join(args.out_file.split('/')[:ind]) for ind in xrange(2, args.out_file.count('/')+1)]:
         if not os.path.isdir(subdir):

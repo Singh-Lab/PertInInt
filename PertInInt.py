@@ -1112,18 +1112,6 @@ if __name__ == "__main__":
 
     # ------------------------------------------------------------------------------------------------
     # (i) check if required files are all present
-    if not args.maf_file or not os.path.isfile(args.maf_file):
-        sys.stderr.write('* Could not open maf mutation file: ' + str(args.maf_file) + '\n' +
-                         '* Please obtain a sample .maf file by running: \n' +
-                         '    > if [ ! -d mafs ]; then mkdir mafs; fi\n' +
-                         '    > AGGREGATE_CANCER=TCGA.Aggregate.muse.aggregated.somatic.maf.gz\n' +
-                         '    > wget http://compbio.cs.princeton.edu/pertinint/$AGGREGATE_CANCER ' +
-                         '-O mafs/$AGGREGATE_CANCER\n' +
-                         '    > gzip -d mafs/$AGGREGATE_CANCER\n' +
-                         '* Usage: python '+sys.argv[0]+' --maf_file <input_file> ' +
-                         '--out_file <output_file>\n')
-        sys.exit(1)
-
     if not os.path.isdir(args.track_path):
         sys.stderr.write('* Could not find directory to precomputed tracks: ' + args.track_path+'\n' +
                          '* Please obtain this directory by running: \n' +
@@ -1131,6 +1119,17 @@ if __name__ == "__main__":
                          '    > tar -xvzf PertInInt-tracks_v0.tar.gz\n' +
                          '* Usage: python '+sys.argv[0]+' --maf_file <input_file> ' +
                          '--out_file <output_file> --track_path <path_to_precomputed_tracks>\n')
+        sys.exit(1)
+
+    if not args.maf_file or not os.path.isfile(args.maf_file):
+        sys.stderr.write('* Could not open maf mutation file: ' + str(args.maf_file) + '\n' +
+                         '* Please obtain a sample .maf file by running: \n' +
+                         '    > if [ ! -d mafs ]; then mkdir mafs; fi\n' +
+                         '    > AGGREGATE_CANCER=TCGA.Aggregate.muse.aggregated.somatic.maf.gz\n' +
+                         '    > wget http://compbio.cs.princeton.edu/pertinint/$AGGREGATE_CANCER ' +
+                         '-O mafs/$AGGREGATE_CANCER\n' +
+                         '* Usage: python '+sys.argv[0]+' --maf_file <input_file> ' +
+                         '--out_file <output_file>\n')
         sys.exit(1)
 
     if not os.path.isfile(args.ensembl_annotation_file):

@@ -583,7 +583,7 @@ def get_observed_mu_covariance(mutation_indices, file_contents, aggregate_names,
         expected_yi = float(v[header.index('expectation_yi')])
         variance_yi = float(v[header.index('variance_yi')])
         covariances_yizi = v[header.index('covariance')]
-        minimum_mut_count = max(int(v[header.index('minimum_mutation_count')]), 1)
+        minimum_mut_count = max(int(v[header.index('minimum_mutation_count')]), 2)
 
         # restrict to a subset of tracks based on the restriction passed in
         if not check_restrictions(track_name, restriction, aggregate_names):
@@ -594,8 +594,7 @@ def get_observed_mu_covariance(mutation_indices, file_contents, aggregate_names,
         track_mutations = [(mut_index, mut_burden) for mut_index, mut_burden in mutation_indices
                            if mut_index in current_indices]
         del current_indices
-        if len(track_mutations) < 1 or (len(track_mutations) < minimum_mut_count and
-                                        track_name_to_classification(track_name) != 'conservation'):
+        if len(track_mutations) < minimum_mut_count:
             continue
 
         # observed binding score:

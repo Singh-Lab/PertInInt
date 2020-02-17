@@ -1228,6 +1228,11 @@ if __name__ == "__main__":
     )
     sys.stderr.write('    ! finished in '+reformat_time(time.time()-start)+'\n')
 
+    print args.maf_file
+    print total_mut_value
+    print total_mut_count
+    sys.exit(1)
+
     # ------------------------------------------------------------------------------------------------
     # (3) start processing mutated proteins:
     sys.stderr.write('(3) Processing per-protein Z-scores for all mutated, modelable proteins...\n')

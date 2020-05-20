@@ -45,12 +45,12 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
 
   ```bash
   if [ ! -d output ]; then mkdir output; fi
-  python PertInInt.py --track_path track_weights/
-                      --ensembl_annotation_file GRCh38_ensembl_gene_list.tsv.gz
-                      --maf_file mafs/TCGA.Aggregate.muse.aggregated.somatic.maf
-                      --out_file output/TCGA.Aggregate.muse.aggregated.somatic-PertInInt_output.tsv
-                      --expression_file TCGA_GRCh38_expressed-genes_TPM.tsv.gz
-                      --driver_annotation_file GRCh38_driver_gene_list.tsv.gz                      
+  python PertInInt.py --track_path track_weights/ \
+  --ensembl_annotation_file GRCh38_ensembl_gene_list.tsv.gz \
+  --maf_file mafs/TCGA.Aggregate.muse.aggregated.somatic.maf \
+  --out_file output/TCGA.Aggregate.muse.aggregated.somatic-PertInInt_output.tsv \
+  --expression_file TCGA_GRCh38_expressed-genes_TPM.tsv.gz \
+  --driver_annotation_file GRCh38_driver_gene_list.tsv.gz                      
   ```
 
 * PertInInt automatically includes all four track types presented in the original publication of our paper. You can choose to run PertInInt on a subset of track types by specifying one of the following options using the `--restriction` argument:
@@ -78,6 +78,6 @@ The goal of our analytical PertInInt method is to rapidly uncover proteins with 
 * Each gene ranked by PertInInt is also associated with a comma-delimited list of individual functional regions with positive *Z*-scores. To aid in downstream functional analyses, we provide a script for your convenience to parse this output into a tab-delimited table highlighting the track types (e.g., specific interaction sites or domains) that are significantly mutated in particular genes:
 
   ```bash
-  python highlight_mechanism.py --pertinint_results output/TCGA.Aggregate.muse.aggregated.somatic-PertInInt_output.tsv
-                                --out_file output/TCGA.Aggregate.muse.aggregated.somatic-PertInInt_mechanisms-output.tsv
+  python highlight_mechanism.py --pertinint_results output/TCGA.Aggregate.muse.aggregated.somatic-PertInInt_output.tsv \
+  --out_file output/TCGA.Aggregate.muse.aggregated.somatic-PertInInt_mechanisms-output.tsv
   ```

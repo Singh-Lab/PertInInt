@@ -117,7 +117,9 @@ def track_name_to_classification(track_name):
     # that tracks from different categories were merged, but in this rare case, we pick the more "mechanistically
     # informative" classification:
     for bd_track in track_name.split(','):
-        if bd_track.startswith('Homology_binding') or \
+        if bd_track.startswith('dSPRINT'):
+            return 'dsprint'
+        elif bd_track.startswith('Homology_binding') or \
             (bd_track.startswith('PF') and not bd_track.endswith(':complete') and
              ((not RESTRICTED_DOMS and bd_track.startswith('PF') and not bd_track.endswith(':complete')) or
               (RESTRICTED_DOMS and (bd_track.split(':')[0], bd_track.split(':')[-1]) not in RESTRICTED_DOMS))):
@@ -128,8 +130,12 @@ def track_name_to_classification(track_name):
             return 'conservation'
         elif bd_track.startswith('ExAC_allelefreq'):
             return 'conservation'
-        elif bd_track.startswith('ConCavity'):
+        elif 'ConCavity' in bd_track:
             return 'interaction'
+        elif 'PhosphoELM' in bd_track:
+            return 'phosphorylation'
+        elif 'Disorder' in bd_track:
+            return 'disorder'
     return 'none'
 
 
@@ -174,26 +180,29 @@ def check_restrictions(track_name, restriction='none', aggregate_names=None):
                 return False  # don't consider individual domains in repetitive families
 
     track_classification = track_name_to_classification(track_name)
-    if track_classification not in ['interaction', 'domain', 'conservation', 'wholegene']:
+    if track_classification not in ['interaction', 'domain', 'conservation', 'wholegene', 'dsprint', 'phosphorylation', 'disorder']:
         return False
 
-    if restriction in ['interaction', 'interwholegene']:
+    if restriction in ['interaction', 'interwholegene', 'dsprintonly']:
         if track_classification != 'interaction':
             return False
-    elif restriction in ['domain', 'domwholegene']:
+    elif restriction in ['domain', 'domwholegene', 'dsprintonly']:
         if track_classification != 'domain':
             return False
-    elif restriction in ['conservation', 'conswholegene']:
+    elif restriction in ['conservation', 'conswholegene', 'dsprintonly']:
         if track_classification != 'conservation':
             return False
-    elif restriction in ['nointeraction', 'domcons']:
+    elif restriction in ['nointeraction', 'domcons', 'dsprintonly']:
         if track_classification == 'interaction':
             return False
-    elif restriction in ['nodomain', 'intercons']:
+    elif restriction in ['nodomain', 'intercons', 'dsprintonly']:
         if track_classification == 'domain':
             return False
-    elif restriction in ['noconservation', 'interdom']:
+    elif restriction in ['noconservation', 'interdom', 'dsprintonly']:
         if track_classification == 'conservation':
+            return False
+    elif restriction in ['nodsprint']:
+        if track_classification == 'dsprint':
             return False
     elif restriction in ['wholegene']:
         return False
@@ -791,7 +800,7 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
     # (2) get list of domains that occur 40+ times in this protein (we will ONLY consider agg tracks in these cases)
     aggregate_names = None
     if restriction in ['none', 'interaction', 'nointeraction', 'domain', 'nodomain', 'noconservation', 'nowholegene',
-                       'intercons', 'interdom', 'interwholegene', 'domcons', 'domwholegene']:
+                       'intercons', 'interdom', 'interwholegene', 'domcons', 'domwholegene', 'nodsprint', 'dsprintonly']:
         aggregate_names = aggregate_domain_tracks(file_contents)
 
     # keep track of how many track types had positive Z-scores:
@@ -799,7 +808,7 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
 
     # (3) start with the whole gene Z-score if specified
     wholegene_zscore = 0.
-    if restriction not in ['interaction', 'domain', 'conservation', 'interdom', 'intercons', 'domcons', 'nowholegene']:
+    if restriction not in ['interaction', 'domain', 'conservation', 'interdom', 'intercons', 'domcons', 'nowholegene', 'dsprintonly']:
         gene_probability = None
         for wline in file_contents:
             if wline.startswith('#'):
@@ -869,7 +878,7 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
 
     # combine the whole gene zscore, too:
     if restriction not in ['interaction', 'domain', 'conservation', 'interdom', 'intercons', 'domcons',
-                           'nowholegene'] and wholegene_zscore and wholegene_zscore > 0.:
+                           'nowholegene', 'dsprintonly'] and wholegene_zscore and wholegene_zscore > 0.:
         # there is no within-gene variance for the whole gene track, so its covariance with all other tracks must be 0:
         correlation_matrix = np.append(np.vstack([correlation_matrix, [0.] * len(zscores)]),
                                        np.array([0.] * len(zscores) + [1.]).reshape((len(zscores) + 1, 1)), 1)
@@ -884,7 +893,7 @@ def protein_ztransform(mutation_indices, weightfile, current_mutational_value, t
     # IF domain tracks were the only positively-weighted tracks for this protein, scale down the score,
     # specifically if the whole gene Z-score and conservation scores were not positive...
     if positive_zscore_track_types == {'domain'} and restriction in \
-       ['noconservation', 'domwholegene', 'domcons', 'nointeraction', 'nowholegene', 'none', 'interdom']:
+       ['noconservation', 'domwholegene', 'domcons', 'nointeraction', 'nowholegene', 'none', 'interdom', 'nodsprint', 'dsprintonly']:
         correlation_matrix = np.append(np.vstack([correlation_matrix, [0.] * len(zscores)]),
                                        np.array([0.] * len(zscores) + [1.]).reshape((len(zscores) + 1, 1)), 1)
         zscores.append(0.0001)
@@ -1102,7 +1111,8 @@ if __name__ == "__main__":
                         default='none',
                         choices={'none', 'interaction', 'nointeraction', 'domain', 'nodomain',
                                  'conservation', 'noconservation', 'wholegene', 'nowholegene',
-                                 'intercons', 'interdom', 'interwholegene', 'domcons', 'domwholegene', 'conswholegene'})
+                                 'intercons', 'interdom', 'interwholegene', 'domcons', 'domwholegene', 'conswholegene',
+                                 'dsprintonly', 'nodsprint'})
     parser.add_argument('--timeout', type=int, help='Maximum number of seconds to spend processing any one protein',
                         default=60)
     parser.add_argument('--silent', dest='silent_mutations', action='store_true', default=False,

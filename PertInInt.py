@@ -1127,6 +1127,7 @@ if __name__ == "__main__":
                          '    > AGGREGATE_CANCER=TCGA.Aggregate.muse.aggregated.somatic.maf.gz\n' +
                          '    > wget http://compbio.cs.princeton.edu/pertinint/$AGGREGATE_CANCER ' +
                          '-O mafs/$AGGREGATE_CANCER\n' +
+                         '    > gzip -d mafs/$AGGREGATE_CANCER\n' + 
                          '* Usage: python '+sys.argv[0]+' --maf_file <input_file> ' +
                          '--out_file <output_file>\n')
         sys.exit(1)

@@ -182,7 +182,7 @@ def check_restrictions(track_name, restriction='none', aggregate_names=None):
     if track_classification not in ['interaction', 'domain', 'conservation', 'wholegene', 'dsprint', 'phosphorylation', 'disorder']:
         return False
     
-    if restriction == 'base_pertinint' and (track_classification not in ['interaction', 'domain', 'conservation'] or "ConCavity" track_name):
+    if restriction == 'base_pertinint' and (track_classification not in ['interaction', 'domain', 'conservation'] or "ConCavity" in track_name):
         return False
     elif restriction in ['interaction', 'interwholegene'] and track_classification != 'interaction':
         return False

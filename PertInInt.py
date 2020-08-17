@@ -138,7 +138,6 @@ def track_name_to_classification(track_name):
             return 'disorder'
     return 'none'
 
-
 ####################################################################################################
 
 def edit_track_name(track_name):
@@ -182,28 +181,25 @@ def check_restrictions(track_name, restriction='none', aggregate_names=None):
     track_classification = track_name_to_classification(track_name)
     if track_classification not in ['interaction', 'domain', 'conservation', 'wholegene', 'dsprint', 'phosphorylation', 'disorder']:
         return False
-
-    if restriction in ['interaction', 'interwholegene', 'dsprintonly']:
-        if track_classification != 'interaction':
-            return False
-    elif restriction in ['domain', 'domwholegene', 'dsprintonly']:
-        if track_classification != 'domain':
-            return False
-    elif restriction in ['conservation', 'conswholegene', 'dsprintonly']:
-        if track_classification != 'conservation':
-            return False
-    elif restriction in ['nointeraction', 'domcons', 'dsprintonly']:
-        if track_classification == 'interaction':
-            return False
-    elif restriction in ['nodomain', 'intercons', 'dsprintonly']:
-        if track_classification == 'domain':
-            return False
-    elif restriction in ['noconservation', 'interdom', 'dsprintonly']:
-        if track_classification == 'conservation':
-            return False
-    elif restriction in ['nodsprint']:
-        if track_classification == 'dsprint':
-            return False
+    
+    if restriction == 'base_pertinint' and (track_classification not in ['interaction', 'domain', 'conservation'] or "ConCavity" track_name):
+        return False
+    elif restriction in ['interaction', 'interwholegene'] and track_classification != 'interaction':
+        return False
+    elif restriction in ['domain', 'domwholegene'] and track_classification != 'domain':
+        return False
+    elif restriction in ['conservation', 'conswholegene'] and track_classification != 'conservation':
+        return False
+    elif restriction in ['nointeraction', 'domcons', 'dsprintonly'] and track_classification == 'interaction':
+        return False
+    elif restriction in ['nodomain', 'intercons', 'dsprintonly'] and track_classification == 'domain':
+        return False
+    elif restriction in ['noconservation', 'interdom', 'dsprintonly'] and track_classification == 'conservation':
+        return False
+    elif restriction in ['dsprintonly'] and track_classification in ["phosphorylation", "disorder"]:
+        return False
+    elif restriction in ['nodsprint'] and track_classification == 'dsprint':
+        return False
     elif restriction in ['wholegene']:
         return False
 
@@ -1112,7 +1108,7 @@ if __name__ == "__main__":
                         choices={'none', 'interaction', 'nointeraction', 'domain', 'nodomain',
                                  'conservation', 'noconservation', 'wholegene', 'nowholegene',
                                  'intercons', 'interdom', 'interwholegene', 'domcons', 'domwholegene', 'conswholegene',
-                                 'dsprintonly', 'nodsprint'})
+                                 'dsprintonly', 'nodsprint', 'base_pertinint'})
     parser.add_argument('--timeout', type=int, help='Maximum number of seconds to spend processing any one protein',
                         default=60)
     parser.add_argument('--silent', dest='silent_mutations', action='store_true', default=False,
